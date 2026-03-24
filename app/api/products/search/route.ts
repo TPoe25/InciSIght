@@ -1,24 +1,37 @@
-// app/api/products/search/route.ts
+import { prisma } from "@/lib/prisma";
 
-import { prisma } from "@/lib/prisma"
+export const runtime = "nodejs";
 
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url)
-  const q = searchParams.get("q") || ""
+  try {
+    const { searchParams } = new URL(req.url);
+    const q = (searchParams.get("q") || "").trim();
 
-  const products = await prisma.product.findMany({
-    where: {
-      name: {
-        contains: q,
-        mode: "insensitive"
-      }
-    },
-    include: {
-      ingredients: {
-        include: { ingredient: true }
-      }
+    if (!q) {
+      return Response.json([]);
     }
-  })
 
-  return Response.json(products)
+    const products = await prisma.product.findMany({
+      where: {
+        name: {
+          contains: q,
+          mode: "insensitive",
+        },
+      },
+      include: {
+        ingredients: {
+          include: { ingredient: true },
+        },
+      },
+      take: 20,
+      orderBy: {
+        name: "asc",
+      },
+    });
+
+    return Response.json(products);
+  } catch (error) {
+    console.error("Product search failed", error);
+    return Response.json({ error: "Unable to search products." }, { status: 500 });
+  }
 }

@@ -1,152 +1,56 @@
-# AI Beauty Product Scanner – Team Capstone Pitch & Build Plan (Prisma Stack)
-## Taylor Poe, Alfredo Rosado, Jacob Griffith
-### 3-23-26
+# Beauty Ingredient Scanner
 
-## Project Vision
-We are building a web-based AI-powered beauty product scanner that helps users understand ingredient safety, personalize results, and make better purchasing decisions.
-Instead of just labeling products as “good” or “bad,” our app focuses on:
-explaining why a product is flagged
-adapting results based on the user
-suggesting safer alternatives
-This project is designed as both a capstone and a scalable product, with long-term potential including monetization, AI-driven improvements, and real-world deployment.
+A Next.js app that helps users scan or search beauty products, review ingredient risk, and compare products side by side.
 
-## Problem
-Consumers often do not understand ingredient labels.
-Current apps:
-use generic scoring
-lack personalization
-provide weak explanations
-don’t support comparison
+## Stack
 
-## Solution
-### Users can:
-upload product label images
-search products
-analyze ingredients
-receive a safety score
-get AI explanations
-compare products and find alternatives
+- Next.js 16
+- React 19
+- Prisma 7
+- PostgreSQL
+- NextAuth 5
+- OpenAI API
 
-# Core Features (MVP)
-OCR image scanning
-Product search
-Ingredient analysis
-Safety scoring (green/yellow/red)
-AI explanation
-Safer alternatives
+## Required Environment Variables
 
-## Advanced Features
-Personalized scoring
-Custom ingredient alerts
-Product comparison
-AI assistant
-Sustainability score
+Copy [`.env.example`](/Users/taylorpoe/Projects/Beauty_Ingreditent_Scanner/.env.example) to `.env.local` for local development and set the same values in Vercel:
 
-## Final Tech Stack (UPDATED)
-Frontend
-Next.js (React)
-Hosted on Vercel
-Backend
-Next.js API routes (primary backend)
-Optional Python microservice for OCR/AI
-Database
-PostgreSQL
-ORM
-Prisma
-Authentication
-NextAuth (recommended) OR JWT
+- `DATABASE_URL`
+- `AUTH_SECRET`
+- `OPENAI_API_KEY`
 
-## Why Prisma
-Type-safe database queries
-Clean relational modeling
-Works perfectly with Next.js + Vercel
-Faster development for team
+## Local Development
 
-## Architecture
-Frontend (Next.js on Vercel)
-↓
-API Routes (Next.js backend)
-↓
-Prisma ORM
-↓
-PostgreSQL Database
-Optional:
-Python service for OCR + AI
+```bash
+npm install
+npm run db:generate
+npm run dev
+```
 
-## Authentication & Authorization
-User login via NextAuth or JWT
-Secure sessions
-Protected routes
-Role-based access (free vs premium)
+## Database Commands
 
-## Async Processing
-OCR runs asynchronously
-AI processing handled in background
-job queue system (future)
+```bash
+npm run db:migrate
+npm run db:migrate:deploy
+npm run db:seed
+```
 
-## AI System
-AI is used for:
-explanations
-recommendations
-comparisons
-Future:
-AI-assisted database updates
-smarter personalization
+## Production Build
 
-## Database (Prisma + Postgres)
-### Core models:
-User
-UserProfile
-Product
-Ingredient
-ProductIngredient
-Scan
-Subscription
+```bash
+npm run build
+npm run start
+```
 
-# Monetization
-## Freemium model:
-### Free:
-basic scans
-score
-Premium:
-unlimited scans
-personalization
-alerts
-comparisons
-AI insights
+## Vercel Deployment
 
-## Scaling
-Vercel serverless scaling
-PostgreSQL scaling
-Redis (future)
-Docker (future)
+1. Import the repository into Vercel.
+2. Set `DATABASE_URL`, `AUTH_SECRET`, and `OPENAI_API_KEY` in the Vercel project settings.
+3. Use the default build command: `npm run build`.
+4. If you are using Prisma migrations in production, run `npm run db:migrate:deploy` against the production database before or during deployment.
 
-## Development Plan
-Sprint 1: Setup
-Sprint 2: DB + API
-Sprint 3: OCR + scoring
-Sprint 4: AI
-Sprint 5: personalization
-Sprint 6: polish
+## Current Notes
 
-'''
-“We’re building an AI-powered beauty scanner that explains ingredients and personalizes results.”
-“We’re using Next.js with Prisma and PostgreSQL to build a scalable and production-ready system.”
-'''
-
-# Conclusion
-## This project combines:
-- full-stack dev
-- AI
-- scalable architecture
-- and is designed to go beyond a capstone into a real product.
-
-Prisma Setup
-
-Privacy Policy
-
-Terms of Service
-
-In App Disclaimers
-
-UI Walkthrough
+- `/api` is a simple health check endpoint.
+- `/api/scans` currently returns mock OCR output until a production OCR provider is wired in.
+- Product detail pages now fetch data directly from Prisma instead of relying on a localhost-only API call.

@@ -1,18 +1,18 @@
-// app/components/ScoreBadge.tsx
+import type { ProductScore } from "@/lib/scoring";
 
-// ScoreBadge component to display a score with a background color based on the score's color
-export default function ScoreBadge({ score, color }: any) {
-    const bg =
-        color === "green"
-            ? "lightgreen"
-            : color === "yellow"
-                ? "khaki"
-                : "lightcoral"
+type ScoreBadgeProps = ProductScore;
 
-    // Container for the score badge with styling and background color based on the score's color
-    return (
-        <div style={{ background: bg, padding: 6, display: "inline-block" }}>
-            {score} ({color})
-        </div>
-    )
+export default function ScoreBadge({ score, color }: ScoreBadgeProps) {
+  const bg =
+    color === "green"
+      ? "lightgreen"
+      : color === "yellow"
+        ? "khaki"
+        : "lightcoral";
+
+  return (
+    <div style={{ background: bg, padding: 6, display: "inline-block" }}>
+      {score} ({color})
+    </div>
+  );
 }

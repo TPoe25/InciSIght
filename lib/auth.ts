@@ -1,39 +1,46 @@
-// lib/auth.ts
-import NextAuth from "next-auth"
-import Credentials from "next-auth/providers/credentials"
-import { prisma } from "./prisma"
-import bcrypt from "bcryptjs"
+import bcrypt from "bcryptjs";
+import NextAuth from "next-auth";
+import Credentials from "next-auth/providers/credentials";
+import { z } from "zod";
+import { prisma } from "./prisma";
+import { requireAuthSecret } from "./env";
 
-// Configure NextAuth with a credentials provider for user authentication
+const credentialsSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+});
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  secret: requireAuthSecret(),
   providers: [
     Credentials({
       credentials: {
         email: {},
-        password: {}
+        password: {},
       },
       async authorize(credentials) {
+        const parsedCredentials = credentialsSchema.safeParse(credentials);
+        if (!parsedCredentials.success) return null;
+
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email as string }
-        })
+          where: { email: parsedCredentials.data.email },
+        });
 
-        // If the user exists and the password is valid, return it; otherwise, return null
-        if (!user) return null
+        if (!user?.password) return null;
 
-        // Hash the password before storing it in the database
         const valid = await bcrypt.compare(
-          credentials.password as string,
-          user.password!
-        )
+          parsedCredentials.data.password,
+          user.password
+        );
 
-        // If the password is valid, return the user; otherwise, return null
-        if (!valid) return null
+        if (!valid) return null;
 
-        // Return the user to the client
-        return user
-      }
-    })
+        return {
+          id: user.id,
+          email: user.email,
+        };
+      },
+    }),
   ],
-  // Use JWT for session management
-  session: { strategy: "jwt" }
-})
+  session: { strategy: "jwt" },
+});

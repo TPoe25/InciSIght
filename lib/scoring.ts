@@ -1,17 +1,21 @@
-// lib/scoring.ts
+type IngredientRisk = {
+  riskLevel: string;
+};
 
-// This function calculates a score based on the risk levels of the ingredients.
-export function calculateScore(ingredients: any[]) {
-    let score = 100
+export type ProductScore = {
+  score: number;
+  color: "green" | "yellow" | "red";
+};
 
-    // Decrease the score based on the risk level of each ingredient.
-    for (const ing of ingredients) {
-        if (ing.riskLevel === "high") score -= 20
-        if (ing.riskLevel === "moderate") score -= 10
-    }
+export function calculateScore(ingredients: IngredientRisk[]): ProductScore {
+  let score = 100;
 
-    // Return the final score and color based on the risk level.
-    if (score >= 80) return { score, color: "green" }
-    if (score >= 50) return { score, color: "yellow" }
-    return { score, color: "red" }
+  for (const ingredient of ingredients) {
+    if (ingredient.riskLevel === "high") score -= 20;
+    if (ingredient.riskLevel === "moderate") score -= 10;
+  }
+
+  if (score >= 80) return { score, color: "green" };
+  if (score >= 50) return { score, color: "yellow" };
+  return { score, color: "red" };
 }
