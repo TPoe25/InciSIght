@@ -1,53 +1,110 @@
 import { prisma } from "@/lib/prisma";
 import { calculateScore } from "@/lib/scoring";
-import { z } from "zod";
 
-export const runtime = "nodejs";
+type IngredientLike = {
+  name: string;
+  riskLevel: string;
+  riskScore: number;
+};
 
-const compareSchema = z.object({
-  a: z.string().min(1),
-  b: z.string().min(1),
-});
+function getFlaggedIngredients(ingredients: IngredientLike[]) {
+  return ingredients
+    .filter(
+      (ingredient) =>
+        ingredient.riskLevel === "high" || ingredient.riskLevel === "moderate"
+    )
+    .map((ingredient) => ingredient.name);
+}
 
 export async function POST(req: Request) {
   try {
-    const parsedBody = compareSchema.safeParse(await req.json());
+    const body = await req.json();
+    const { productAId, productBId } = body;
 
-    if (!parsedBody.success) {
-      return Response.json({ error: "Two product ids are required." }, { status: 400 });
+    if (!productAId || !productBId) {
+      return Response.json(
+        { error: "Both product IDs are required." },
+        { status: 400 }
+      );
     }
 
-    const { a, b } = parsedBody.data;
-
-    const productA = await prisma.product.findUnique({
-      where: { id: a },
-      include: { ingredients: { include: { ingredient: true } } },
-    });
-
-    const productB = await prisma.product.findUnique({
-      where: { id: b },
-      include: { ingredients: { include: { ingredient: true } } },
-    });
+    const [productA, productB] = await Promise.all([
+      prisma.product.findUnique({
+        where: { id: productAId },
+        include: {
+          ingredients: {
+            include: {
+              ingredient: true,
+            },
+          },
+        },
+      }),
+      prisma.product.findUnique({
+        where: { id: productBId },
+        include: {
+          ingredients: {
+            include: {
+              ingredient: true,
+            },
+          },
+        },
+      }),
+    ]);
 
     if (!productA || !productB) {
       return Response.json(
-        { error: "Both products must exist to compare them." },
+        { error: "One or both products could not be found." },
         { status: 404 }
       );
     }
 
-    const scoreA = calculateScore(productA.ingredients.map((item) => item.ingredient));
-    const scoreB = calculateScore(productB.ingredients.map((item) => item.ingredient));
+    const ingredientsA = productA.ingredients.map((item) => item.ingredient);
+    const ingredientsB = productB.ingredients.map((item) => item.ingredient);
+
+    const scoreA = calculateScore(ingredientsA);
+    const scoreB = calculateScore(ingredientsB);
+
+    const flaggedA = getFlaggedIngredients(ingredientsA);
+    const flaggedB = getFlaggedIngredients(ingredientsB);
+
+    let better: "A" | "B" | "Tie" = "Tie";
+    let summary =
+      "Both products are currently scored very similarly based on the available ingredient data.";
+
+    if (scoreA.score > scoreB.score) {
+      better = "A";
+      summary = `${productA.name} scored higher than ${productB.name}, which suggests fewer or lower-risk flagged ingredients in this comparison.`;
+    } else if (scoreB.score > scoreA.score) {
+      better = "B";
+      summary = `${productB.name} scored higher than ${productA.name}, which suggests fewer or lower-risk flagged ingredients in this comparison.`;
+    }
 
     return Response.json({
-      better: scoreA.score > scoreB.score ? "Product A" : "Product B",
-      scoreA,
-      scoreB,
-      productA: { id: productA.id, name: productA.name },
-      productB: { id: productB.id, name: productB.name },
+      productA: {
+        id: productA.id,
+        name: productA.name,
+        brand: productA.brand,
+        score: scoreA.score,
+        color: scoreA.color,
+        flaggedIngredients: flaggedA,
+      },
+      productB: {
+        id: productB.id,
+        name: productB.name,
+        brand: productB.brand,
+        score: scoreB.score,
+        color: scoreB.color,
+        flaggedIngredients: flaggedB,
+      },
+      better,
+      summary,
     });
   } catch (error) {
-    console.error("Compare request failed", error);
-    return Response.json({ error: "Unable to compare products." }, { status: 500 });
+    console.error("COMPARE_ROUTE_ERROR", error);
+
+    return Response.json(
+      { error: "Something went wrong while comparing products." },
+      { status: 500 }
+    );
   }
 }

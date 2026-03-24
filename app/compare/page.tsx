@@ -1,72 +1,267 @@
 "use client";
 
 import { useState } from "react";
-import type { ProductScore } from "@/lib/scoring";
 
-type CompareResult = {
-  better: string;
-  scoreA: ProductScore;
-  scoreB: ProductScore;
-  productA?: { id: string; name: string };
-  productB?: { id: string; name: string };
-  error?: string;
+type CompareResponse = {
+  productA: {
+    id: string;
+    name: string;
+    brand?: string | null;
+    score: number;
+    color: string;
+    flaggedIngredients: string[];
+  };
+  productB: {
+    id: string;
+    name: string;
+    brand?: string | null;
+    score: number;
+    color: string;
+    flaggedIngredients: string[];
+  };
+  better: "A" | "B" | "Tie";
+  summary: string;
 };
 
 export default function ComparePage() {
-  const [a, setA] = useState("");
-  const [b, setB] = useState("");
-  const [result, setResult] = useState<CompareResult | null>(null);
+  const [productA, setProductA] = useState("");
+  const [productB, setProductB] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState<CompareResponse | null>(null);
 
-  const compare = async () => {
-    const res = await fetch("/api/compare", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ a, b }),
-    });
+  const handleCompare = async () => {
+    setError("");
+    setResult(null);
 
-    const data: CompareResult = await res.json();
-    setResult(data);
+    if (!productA.trim() || !productB.trim()) {
+      setError("Please enter two product IDs to compare.");
+      return;
+    }
+
+    if (productA.trim() === productB.trim()) {
+      setError("Please choose two different products.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const res = await fetch("/api/compare", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          productAId: productA.trim(),
+          productBId: productB.trim(),
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Comparison failed.");
+      }
+
+      setResult(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const badgeClasses = (color: string) => {
+    switch (color) {
+      case "green":
+        return "bg-emerald-100 text-emerald-700 border-emerald-200";
+      case "yellow":
+        return "bg-amber-100 text-amber-700 border-amber-200";
+      case "red":
+        return "bg-rose-100 text-rose-700 border-rose-200";
+      default:
+        return "bg-neutral-100 text-neutral-700 border-neutral-200";
+    }
   };
 
   return (
-    <div className="mx-auto max-w-xl p-10">
-      <h1 className="mb-4 text-2xl font-bold">Compare Products</h1>
-
-      <input
-        placeholder="Product A ID"
-        onChange={(e) => setA(e.target.value)}
-        className="mb-2 w-full border p-2"
-      />
-
-      <input
-        placeholder="Product B ID"
-        onChange={(e) => setB(e.target.value)}
-        className="mb-4 w-full border p-2"
-      />
-
-      <button onClick={compare} className="rounded bg-blue-500 px-4 py-2 text-white">
-        Compare
-      </button>
-
-      {result && (
-        <div className="mt-6 rounded bg-white p-4 shadow">
-          {"error" in result && result.error ? (
-            <p>{result.error}</p>
-          ) : (
-            <>
-              <p>Better Choice: {result.better}</p>
-              <p>
-                {result.productA?.name ?? "Product A"}: {result.scoreA.score}
-              </p>
-              <p>
-                {result.productB?.name ?? "Product B"}: {result.scoreB.score}
-              </p>
-            </>
-          )}
+    <main className="min-h-screen bg-gradient-to-b from-neutral-50 to-rose-50/40">
+      <div className="mx-auto max-w-6xl px-6 py-10">
+        <div className="mb-8">
+          <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-rose-600">
+            Compare
+          </p>
+          <h1 className="text-4xl font-bold tracking-tight text-neutral-900">
+            Compare Beauty Products
+          </h1>
+          <p className="mt-2 max-w-2xl text-neutral-600">
+            Compare two products side by side and see which option looks better
+            based on ingredient scoring and flagged concerns.
+          </p>
         </div>
-      )}
-    </div>
+
+        <section className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="mb-2 block text-sm font-medium text-neutral-700">
+                Product A ID
+              </label>
+              <input
+                type="text"
+                value={productA}
+                onChange={(e) => setProductA(e.target.value)}
+                placeholder="Enter first product ID"
+                className="w-full rounded-2xl border border-neutral-300 bg-neutral-50 px-4 py-3 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-rose-400 focus:bg-white"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-neutral-700">
+                Product B ID
+              </label>
+              <input
+                type="text"
+                value={productB}
+                onChange={(e) => setProductB(e.target.value)}
+                placeholder="Enter second product ID"
+                className="w-full rounded-2xl border border-neutral-300 bg-neutral-50 px-4 py-3 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-rose-400 focus:bg-white"
+              />
+            </div>
+          </div>
+
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            <button
+              onClick={handleCompare}
+              disabled={loading}
+              className="rounded-2xl bg-neutral-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loading ? "Comparing..." : "Compare Products"}
+            </button>
+
+            <p className="text-sm text-neutral-500">
+              Tip: Use product IDs from your database until you switch this to a
+              searchable selector.
+            </p>
+          </div>
+
+          {error && (
+            <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {error}
+            </div>
+          )}
+        </section>
+
+        {result && (
+          <>
+            <section className="mt-6 rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
+              <p className="text-sm text-neutral-500">Recommendation</p>
+              <h2 className="mt-2 text-2xl font-semibold text-neutral-900">
+                {result.better === "A" && `Better Choice: ${result.productA.name}`}
+                {result.better === "B" && `Better Choice: ${result.productB.name}`}
+                {result.better === "Tie" && "These products are closely matched"}
+              </h2>
+              <p className="mt-3 text-neutral-600">{result.summary}</p>
+            </section>
+
+            <section className="mt-6 grid gap-6 lg:grid-cols-2">
+              <article className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm text-neutral-500">Product A</p>
+                    <h3 className="mt-1 text-2xl font-semibold text-neutral-900">
+                      {result.productA.name}
+                    </h3>
+                    {result.productA.brand && (
+                      <p className="mt-1 text-sm text-neutral-500">
+                        {result.productA.brand}
+                      </p>
+                    )}
+                  </div>
+
+                  <div
+                    className={`rounded-full border px-4 py-2 text-sm font-semibold ${badgeClasses(
+                      result.productA.color
+                    )}`}
+                  >
+                    {result.productA.score} • {result.productA.color}
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <p className="text-sm font-medium text-neutral-500">
+                    Flagged Ingredients
+                  </p>
+
+                  {result.productA.flaggedIngredients.length > 0 ? (
+                    <ul className="mt-3 space-y-2">
+                      {result.productA.flaggedIngredients.map((ingredient) => (
+                        <li
+                          key={ingredient}
+                          className="rounded-2xl bg-neutral-50 px-4 py-3 text-sm text-neutral-700"
+                        >
+                          {ingredient}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="mt-3 rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                      No major flagged ingredients found.
+                    </div>
+                  )}
+                </div>
+              </article>
+
+              <article className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm text-neutral-500">Product B</p>
+                    <h3 className="mt-1 text-2xl font-semibold text-neutral-900">
+                      {result.productB.name}
+                    </h3>
+                    {result.productB.brand && (
+                      <p className="mt-1 text-sm text-neutral-500">
+                        {result.productB.brand}
+                      </p>
+                    )}
+                  </div>
+
+                  <div
+                    className={`rounded-full border px-4 py-2 text-sm font-semibold ${badgeClasses(
+                      result.productB.color
+                    )}`}
+                  >
+                    {result.productB.score} • {result.productB.color}
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <p className="text-sm font-medium text-neutral-500">
+                    Flagged Ingredients
+                  </p>
+
+                  {result.productB.flaggedIngredients.length > 0 ? (
+                    <ul className="mt-3 space-y-2">
+                      {result.productB.flaggedIngredients.map((ingredient) => (
+                        <li
+                          key={ingredient}
+                          className="rounded-2xl bg-neutral-50 px-4 py-3 text-sm text-neutral-700"
+                        >
+                          {ingredient}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="mt-3 rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                      No major flagged ingredients found.
+                    </div>
+                  )}
+                </div>
+              </article>
+            </section>
+          </>
+        )}
+      </div>
+    </main>
   );
 }
