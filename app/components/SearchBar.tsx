@@ -9,21 +9,21 @@ export default function SearchBar() {
 
   const handleSearch = () => {
     if (!query.trim()) return;
-    router.push(`/dashboard?q=${encodeURIComponent(query.trim())}`);
+    router.push(`/dashboard?q=${encodeURIComponent(query)}`);
   };
 
   return (
-    <div className="flex gap-2">
+    <div className="flex flex-col gap-3 sm:flex-row">
       <input
-        className="w-full rounded border border-gray-300 px-3 py-2"
-        placeholder="Search product..."
+        type="text"
+        placeholder="Search product, brand, or ingredient..."
         value={query}
-        onChange={(event) => setQuery(event.target.value)}
+        onChange={(e) => setQuery(e.target.value)}
+        className="w-full rounded-2xl border border-neutral-300 bg-neutral-50 px-4 py-3 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-rose-400 focus:bg-white"
       />
       <button
-        className="rounded bg-black px-4 py-2 text-white"
         onClick={handleSearch}
-        type="button"
+        className="rounded-2xl bg-rose-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-rose-600"
       >
         Search
       </button>

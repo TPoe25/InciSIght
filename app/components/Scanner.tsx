@@ -1,49 +1,63 @@
-// app/components/Scanner.tsx
+"use client";
 
-"use client"
+import { useState } from "react";
 
-// This component allows users to upload an image of a product, which will then be sent to the backend for processing. The backend will extract the ingredients from the image and return them to the frontend for display.
-import { useState } from "react"
-
-// Scanner component to display a scanner for users to upload images of products
 export default function Scanner() {
-    const [image, setImage] = useState<File | null>(null)
+    const [image, setImage] = useState<File | null>(null);
+    const [status, setStatus] = useState("");
 
-    // Function to handle image upload and sending it to the backend for processing
     const handleUpload = async () => {
-        if (!image) return
+        if (!image) return;
 
-        // Send the image to the backend for processing using the API endpoint "/api/scans/upload"
-        // Replace "/api/scans/upload" with the actual API endpoint in your backend code. The backend will handle the image processing and return the extracted ingredients.
-        const formData = new FormData()
-        formData.append("file", image)
+        setStatus("Scanning ingredient label...");
 
-        // Send the image to the backend for processing using the API endpoint "/api/scans/upload"
-        // Replace "/api/scans/upload" with the actual API endpoint in your backend code. The backend will handle the image processing and return the extracted ingredients.
+        const formData = new FormData();
+        formData.append("file", image);
+
         const res = await fetch("/api/scans/upload", {
             method: "POST",
-            body: formData
-        })
+            body: formData,
+        });
 
-        // Handle the response from the backend
-        const data = await res.json()
-        console.log(data)
-    }
-    // Render the scanner component with an image upload field and a scan button
+        const data = await res.json();
+        setStatus(`Detected: ${data.text || "No text found"}`);
+    };
+
     return (
-        <div className="bg-white p-6 rounded shadow">
-            <input
-                type="file"
-                onChange={(e) => setImage(e.target.files?.[0] || null)}
-            />
+        <div className="space-y-4">
+            <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 px-6 py-10 text-center transition hover:border-rose-400 hover:bg-rose-50">
+                <span className="text-sm font-medium text-neutral-700">
+                    Upload ingredient label
+                </span>
+                <span className="mt-1 text-xs text-neutral-500">
+                    PNG, JPG, or WEBP
+                </span>
 
-            {/* Button to trigger the image upload and processing */}
+                <input
+                    type="file"
+                    className="hidden"
+                    onChange={(e) => setImage(e.target.files?.[0] || null)}
+                />
+            </label>
+
+            {image && (
+                <div className="rounded-2xl bg-neutral-50 px-4 py-3 text-sm text-neutral-700">
+                    Selected: <span className="font-medium">{image.name}</span>
+                </div>
+            )}
+
             <button
                 onClick={handleUpload}
-                className="mt-4 bg-blue-500 text-white px-4 py-2 rounded"
+                className="w-full rounded-2xl bg-neutral-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-neutral-800"
             >
                 Scan Product
             </button>
+
+            {status && (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                    {status}
+                </div>
+            )}
         </div>
-    )
+    );
 }
