@@ -1,15 +1,90 @@
-# Beauty Ingredient Scanner
+# AI Beauty Product Scanner
+## Overview
 
-A Next.js app that helps users scan or search beauty products, review ingredient risk, and compare products side by side.
+```
+AI Beauty Product Scanner is a mobile-first web application that helps users understand what is inside their beauty and skincare products. By scanning or searching a product, users receive a safety score, ingredient breakdown, and AI-generated explanations to help them make better decisions.
+```
 
-## Stack
+```
+This project was built as a capstone with the goal of creating a real-world, scalable product that goes beyond basic ingredient checkers by adding personalization, comparison tools, and AI-driven insights.
+```
 
-- Next.js 16
-- React 19
-- Prisma 7
-- PostgreSQL
-- NextAuth 5
-- OpenAI API
+# Problem
+
+## Most consumers do not fully understand the ingredients listed on beauty products. Existing tools often:
+
+- use generic scoring systems
+- lack clear explanations
+- do not account for user-specific sensitivities
+- provide little to no comparison between products
+
+**This leads to confusion and poor decision-making when choosing products.**
+
+# Solution
+
+## This application provides a simple workflow:
+
+- Scan or search a product
+- Analyze ingredients using a structured dataset
+- Generate a safety score (green, yellow, red)
+- Explain results in plain language
+- Recommend safer alternatives
+
+**The goal is to make ingredient transparency easy and actionable.**
+
+# Features
+## Core Features
+- Product search and lookup
+- Ingredient-based scoring system
+- Color-coded safety results
+- AI-powered explanations
+- Product comparison (side-by-side)
+- Advanced Features (in progress)
+- OCR label scanning
+- Personalized scoring based on user profile
+- Ingredient alerts (allergens, preferences)
+- Scan history and saved products
+- AI recommendations for safer alternatives
+
+# Tech Stack
+## Frontend
+Next.js (App Router)
+React
+Tailwind CSS
+Backend
+Next.js API routes
+Prisma ORM
+Database
+PostgreSQL (Vercel Postgres)
+AI & Processing
+OpenAI API (explanations and recommendations)
+OCR (planned: Google Vision / Tesseract)
+Database Design
+
+# The system is built around a normalized ingredient model:
+
+- Products contain many ingredients
+- Ingredients can appear in many products
+- Ingredient aliases normalize real-world label variations
+- Scans store user interactions and results
+
+**This structure allows accurate matching and scalable analysis.**
+
+# Scoring Model
+
+## Each ingredient is assigned:
+
+- risk level (low, moderate, high)
+
+# risk score
+
+**The product score is calculated by subtracting ingredient risk from a base score of 100.**
+
+### Score ranges:
+
+**80–100 → Green (safe)**
+**50–79 → Yellow (moderate concern)**
+**Below 50 → Red (high concern)**
 
 ## Required Environment Variables
 
