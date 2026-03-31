@@ -12,3 +12,5 @@ node_modules
 
 .venv
 .env*.local
+
+/keys/google-vision.json
