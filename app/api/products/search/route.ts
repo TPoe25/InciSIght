@@ -13,10 +13,48 @@ export async function GET(req: Request) {
 
     const products = await prisma.product.findMany({
       where: {
-        name: {
-          contains: q,
-          mode: "insensitive",
-        },
+        OR: [
+          {
+            name: {
+              contains: q,
+              mode: "insensitive",
+            },
+          },
+          {
+            brand: {
+              contains: q,
+              mode: "insensitive",
+            },
+          },
+          {
+            ingredients: {
+              some: {
+                ingredient: {
+                  name: {
+                    contains: q,
+                    mode: "insensitive",
+                  },
+                },
+              },
+            },
+          },
+          {
+            ingredients: {
+              some: {
+                ingredient: {
+                  aliases: {
+                    some: {
+                      alias: {
+                        contains: q,
+                        mode: "insensitive",
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        ],
       },
       include: {
         ingredients: {
@@ -24,6 +62,7 @@ export async function GET(req: Request) {
         },
       },
       take: 20,
+      distinct: ["id"],
       orderBy: {
         name: "asc",
       },

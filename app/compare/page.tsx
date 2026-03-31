@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import ProductAutocomplete from "../components/ProductAutocomplete";
 
 type CompareResponse = {
   ingredientDetails: {
@@ -57,6 +58,8 @@ type CompareResponse = {
 export default function ComparePage() {
   const [productA, setProductA] = useState("");
   const [productB, setProductB] = useState("");
+  const [productALabel, setProductALabel] = useState("");
+  const [productBLabel, setProductBLabel] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<CompareResponse | null>(null);
@@ -66,7 +69,7 @@ export default function ComparePage() {
     setResult(null);
 
     if (!productA.trim() || !productB.trim()) {
-      setError("Please enter two product IDs to compare.");
+      setError("Please select two products to compare.");
       return;
     }
 
@@ -134,31 +137,29 @@ export default function ComparePage() {
 
         <section className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
           <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label className="mb-2 block text-sm font-medium text-neutral-700">
-                Product A ID
-              </label>
-              <input
-                type="text"
-                value={productA}
-                onChange={(e) => setProductA(e.target.value)}
-                placeholder="Enter first product ID"
-                className="w-full rounded-2xl border border-neutral-300 bg-neutral-50 px-4 py-3 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-rose-400 focus:bg-white"
-              />
-            </div>
+            <ProductAutocomplete
+              label="Product A"
+              placeholder="Search for the first product..."
+              helperText="Start typing to see available products."
+              selectedLabel={productALabel}
+              selectedId={productA}
+              onSelect={(product) => {
+                setProductA(product.id);
+                setProductALabel(product.name);
+              }}
+            />
 
-            <div>
-              <label className="mb-2 block text-sm font-medium text-neutral-700">
-                Product B ID
-              </label>
-              <input
-                type="text"
-                value={productB}
-                onChange={(e) => setProductB(e.target.value)}
-                placeholder="Enter second product ID"
-                className="w-full rounded-2xl border border-neutral-300 bg-neutral-50 px-4 py-3 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-rose-400 focus:bg-white"
-              />
-            </div>
+            <ProductAutocomplete
+              label="Product B"
+              placeholder="Search for the second product..."
+              helperText="Choose another product from the dropdown."
+              selectedLabel={productBLabel}
+              selectedId={productB}
+              onSelect={(product) => {
+                setProductB(product.id);
+                setProductBLabel(product.name);
+              }}
+            />
           </div>
 
           <div className="mt-5 flex flex-wrap items-center gap-3">
@@ -171,8 +172,7 @@ export default function ComparePage() {
             </button>
 
             <p className="text-sm text-neutral-500">
-              Tip: Use product IDs from your database until you switch this to a
-              searchable selector.
+              Use the dropdowns to pick available products from your database.
             </p>
           </div>
 
@@ -208,6 +208,12 @@ export default function ComparePage() {
                         {result.productA.brand}
                       </p>
                     )}
+                    <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1 text-xs text-neutral-600">
+                      <span className="font-medium text-neutral-800">ID</span>
+                      <code className="rounded bg-white px-2 py-0.5 text-[11px] text-neutral-700">
+                        {result.productA.id}
+                      </code>
+                    </div>
                   </div>
 
                   <div
@@ -299,6 +305,12 @@ export default function ComparePage() {
                         {result.productB.brand}
                       </p>
                     )}
+                    <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1 text-xs text-neutral-600">
+                      <span className="font-medium text-neutral-800">ID</span>
+                      <code className="rounded bg-white px-2 py-0.5 text-[11px] text-neutral-700">
+                        {result.productB.id}
+                      </code>
+                    </div>
                   </div>
 
                   <div
