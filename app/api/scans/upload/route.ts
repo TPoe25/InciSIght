@@ -1,17 +1,36 @@
 import vision from "@google-cloud/vision";
 import { extractIngredientCandidates } from "@/lib/parseIngredients";
+import { env } from "@/lib/env";
 import { matchIngredients } from "@/lib/matchIngredients";
 
 export const runtime = "nodejs";
 
 function createVisionClient() {
-  const keyFilename = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+  if (env.GOOGLE_VISION_CREDENTIALS_JSON) {
+    const credentials = JSON.parse(env.GOOGLE_VISION_CREDENTIALS_JSON) as {
+      client_email?: string;
+      private_key?: string;
+      project_id?: string;
+    };
 
-  if (!keyFilename) {
-    throw new Error("GOOGLE_APPLICATION_CREDENTIALS is not configured.");
+    return new vision.ImageAnnotatorClient({
+      credentials: {
+        client_email: credentials.client_email,
+        private_key: credentials.private_key,
+      },
+      projectId: credentials.project_id,
+    });
   }
 
-  return new vision.ImageAnnotatorClient({ keyFilename });
+  if (env.GOOGLE_APPLICATION_CREDENTIALS) {
+    return new vision.ImageAnnotatorClient({
+      keyFilename: env.GOOGLE_APPLICATION_CREDENTIALS,
+    });
+  }
+
+  throw new Error(
+    "Configure GOOGLE_VISION_CREDENTIALS_JSON for Vercel or GOOGLE_APPLICATION_CREDENTIALS for local development."
+  );
 }
 
 export async function POST(req: Request) {
