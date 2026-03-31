@@ -7,7 +7,11 @@ type ProductOption = {
   id: string;
   name: string;
   brand?: string | null;
+  category?: string | null;
   baseScore?: number | null;
+  scoreColor?: string | null;
+  ingredientCount?: number;
+  flaggedIngredientCount?: number;
   ingredientPreview?: string[];
 };
 
@@ -73,6 +77,19 @@ export default function ProductAutocomplete({
     }
   };
 
+  const badgeClasses = (color?: string | null) => {
+    switch (color) {
+      case "green":
+        return "border-emerald-200 bg-emerald-100 text-emerald-700";
+      case "yellow":
+        return "border-amber-200 bg-amber-100 text-amber-700";
+      case "red":
+        return "border-rose-200 bg-rose-100 text-rose-700";
+      default:
+        return "border-neutral-200 bg-neutral-100 text-neutral-600";
+    }
+  };
+
   return (
     <div className="relative">
       <label className="mb-2 block text-sm font-medium text-neutral-700">{label}</label>
@@ -116,9 +133,33 @@ export default function ProductAutocomplete({
                 onClick={() => handleSelect(product)}
                 className="block w-full rounded-xl px-3 py-3 text-left transition hover:bg-neutral-50"
               >
-                <div className="font-medium text-neutral-900">{product.name}</div>
-                <div className="mt-1 text-xs text-neutral-500">
-                  {product.brand || "No brand"} • Score {product.baseScore ?? "N/A"}
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="font-medium text-neutral-900">{product.name}</div>
+                    <div className="mt-1 text-xs text-neutral-500">
+                      {product.brand || "No brand"} • Score {product.baseScore ?? "N/A"}
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-neutral-600">
+                      {product.category && (
+                        <span className="rounded-full bg-neutral-100 px-2 py-1">
+                          {product.category}
+                        </span>
+                      )}
+                      <span className="rounded-full bg-neutral-100 px-2 py-1">
+                        {product.ingredientCount ?? 0} ingredients
+                      </span>
+                      <span className="rounded-full bg-neutral-100 px-2 py-1">
+                        {product.flaggedIngredientCount ?? 0} flagged
+                      </span>
+                    </div>
+                  </div>
+                  <span
+                    className={`rounded-full border px-2 py-1 text-[11px] font-semibold uppercase ${badgeClasses(
+                      product.scoreColor
+                    )}`}
+                  >
+                    {product.scoreColor || "n/a"}
+                  </span>
                 </div>
                 {product.ingredientPreview && product.ingredientPreview.length > 0 && (
                   <div className="mt-2 text-xs text-neutral-600">

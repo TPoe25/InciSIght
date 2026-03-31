@@ -73,7 +73,15 @@ export async function GET(req: Request) {
         id: product.id,
         name: product.name,
         brand: product.brand,
+        category: product.category,
         baseScore: product.baseScore,
+        scoreColor: product.scoreColor,
+        ingredientCount: product.ingredients.length,
+        flaggedIngredientCount: product.ingredients.filter(
+          (item) =>
+            item.ingredient.riskLevel === "high" ||
+            item.ingredient.riskLevel === "moderate"
+        ).length,
         ingredientPreview: product.ingredients
           .slice(0, 3)
           .map((item) => item.ingredient.name),
