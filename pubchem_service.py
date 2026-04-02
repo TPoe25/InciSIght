@@ -1,15 +1,16 @@
 # File: pubchem_service.py
 #
-# What this does
-# - GET /autocomplete?q=niac  -> PubChem autocomplete suggestions (optional UI helper)
-# - GET /search?q=niacinamide -> returns [{cid, name, synonyms[], toxicity_text}] (no caching)
+# Endpoints:
+# - GET /autocomplete?q=niac
+# - GET /search?q=niacinamide  -> results in your schema:
+#   { name, normalizedName, riskLevel, riskScore, reviewBucket, category, description, source, aliases, concerns }
 #
-# Setup (WSL)
+# Setup:
 #   python3 -m venv .venv
 #   source .venv/bin/activate
 #   pip install -U fastapi uvicorn httpx
 #
-# Run
+# Run:
 #   uvicorn pubchem_service:app --host 0.0.0.0 --port 8000
 #
 # Try
@@ -20,24 +21,21 @@ from __future__ import annotations
 
 import asyncio
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List
 from urllib.parse import quote
 
 import httpx
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
-
 PUBCHEM_BASE = "https://pubchem.ncbi.nlm.nih.gov"
 DEFAULT_TIMEOUT_S = 30.0
 
-app = FastAPI(title="PubChem Search Service", version="0.1.0")
+app = FastAPI(title="PubChem Search Service", version="0.3.0")
 
-# Allow your app to call this service from a browser/webview if needed.
-# Tighten origins later.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # tighten later
     allow_methods=["GET"],
     allow_headers=["*"],
 )
@@ -47,6 +45,12 @@ def _norm_ws(text: str) -> str:
     return re.sub(r"\s+", " ", (text or "").strip())
 
 
+def normalize_name(name: str) -> str:
+    s = (name or "").lower()
+    s = re.sub(r"[^a-z0-9]+", " ", s)
+    return _norm_ws(s)
+
+
 async def _get_json(client: httpx.AsyncClient, url: str) -> Dict[str, Any]:
     r = await client.get(url)
     r.raise_for_status()
@@ -54,20 +58,14 @@ async def _get_json(client: httpx.AsyncClient, url: str) -> Dict[str, Any]:
 
 
 async def pubchem_autocomplete(client: httpx.AsyncClient, q: str, limit: int) -> List[str]:
-    """
-    PubChem Auto-Complete Search Service (dictionary: compound)
-    Response commonly contains: {"dictionary_terms": {"compound": [...]}, ...}
-    """
     url = f"{PUBCHEM_BASE}/rest/autocomplete/compound/{quote(q)}/json?limit={limit}"
     data = await _get_json(client, url)
 
-    # Primary (what PubChem returns)
     terms = (data.get("dictionary_terms") or data.get("DictionaryTerms") or {})
     compound_terms = terms.get("compound") or terms.get("Compound") or []
     if compound_terms:
         return [_norm_ws(x) for x in compound_terms if _norm_ws(x)]
 
-    # Fallbacks (rare / defensive)
     results = data.get("results") or data.get("Results") or []
     out: List[str] = []
     for item in results:
@@ -77,10 +75,8 @@ async def pubchem_autocomplete(client: httpx.AsyncClient, q: str, limit: int) ->
             out.append(item.get("text") or item.get("name") or "")
     return [_norm_ws(x) for x in out if _norm_ws(x)]
 
+
 async def name_to_cids(client: httpx.AsyncClient, q: str) -> List[int]:
-    """
-    PUG-REST: name -> CID list
-    """
     url = f"{PUBCHEM_BASE}/rest/pug/compound/name/{quote(q)}/cids/JSON"
     data = await _get_json(client, url)
     cids = data.get("IdentifierList", {}).get("CID", [])
@@ -88,9 +84,6 @@ async def name_to_cids(client: httpx.AsyncClient, q: str) -> List[int]:
 
 
 async def cid_synonyms(client: httpx.AsyncClient, cid: int) -> List[str]:
-    """
-    PUG-REST: CID -> synonyms
-    """
     url = f"{PUBCHEM_BASE}/rest/pug/compound/cid/{cid}/synonyms/JSON"
     data = await _get_json(client, url)
     info = (data.get("InformationList", {}).get("Information") or [])
@@ -100,20 +93,7 @@ async def cid_synonyms(client: httpx.AsyncClient, cid: int) -> List[str]:
     return [_norm_ws(s) for s in syns if _norm_ws(s)]
 
 
-async def cid_title(client: httpx.AsyncClient, cid: int) -> str:
-    """
-    Best-effort "name" for display. Prefer first synonym if available; otherwise fallback to CID label.
-    """
-    syns = await cid_synonyms(client, cid)
-    return syns[0] if syns else f"CID {cid}"
-
-
 def _pugview_to_text(node: Any) -> str:
-    """
-    Flatten PUG-View JSON into readable text.
-    PUG-View is nested (Record -> Section -> Information).
-    We extract strings from common fields (TOCHeading, Name, Value/StringWithMarkup).
-    """
     parts: List[str] = []
 
     def walk(x: Any) -> None:
@@ -129,18 +109,15 @@ def _pugview_to_text(node: Any) -> str:
                 walk(i)
             return
         if isinstance(x, dict):
-            # Common PUG-View fields
             for k in ("TOCHeading", "Heading", "Name", "Value", "String", "Description", "Text"):
                 if k in x:
                     walk(x[k])
 
-            # Markup blocks
             if "StringWithMarkup" in x and isinstance(x["StringWithMarkup"], list):
                 for item in x["StringWithMarkup"]:
                     if isinstance(item, dict) and "String" in item:
                         walk(item["String"])
 
-            # Recurse into typical nesting keys
             for k in ("Record", "Section", "Information", "Data", "Reference", "Table", "Row", "Cell"):
                 if k in x:
                     walk(x[k])
@@ -148,22 +125,36 @@ def _pugview_to_text(node: Any) -> str:
 
     walk(node)
 
-    # De-dup consecutive duplicates
     cleaned: List[str] = []
     for p in parts:
         if not cleaned or cleaned[-1] != p:
             cleaned.append(p)
 
-    # Join into a readable blob
     text = "\n".join(cleaned)
     text = re.sub(r"\n{3,}", "\n\n", text).strip()
     return text
 
 
+async def cid_heading_text(client: httpx.AsyncClient, cid: int, heading: str) -> str:
+    url = (
+        f"{PUBCHEM_BASE}/rest/pug_view/data/compound/{cid}/JSON/"
+        f"?heading={quote(heading)}&response_type=display"
+    )
+    data = await _get_json(client, url)
+    return _pugview_to_text(data)
+
+
+async def cid_description_text(client: httpx.AsyncClient, cid: int) -> str:
+    try:
+        text = await cid_heading_text(client, cid, "Description")
+        return text
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code in (400, 404):
+            return ""
+        raise
+
+
 async def cid_toxicity_text(client: httpx.AsyncClient, cid: int) -> str:
-    """
-    PUG-View: try a few headings commonly used for toxicity/safety content.
-    """
     headings = [
         "Toxicity",
         "Toxicological Information",
@@ -172,23 +163,69 @@ async def cid_toxicity_text(client: httpx.AsyncClient, cid: int) -> str:
         "Hazards Identification",
         "GHS Classification",
     ]
-
     for h in headings:
-        url = (
-            f"{PUBCHEM_BASE}/rest/pug_view/data/compound/{cid}/JSON/"
-            f"?heading={quote(h)}&response_type=display"
-        )
         try:
-            data = await _get_json(client, url)
-            text = _pugview_to_text(data)
+            text = await cid_heading_text(client, cid, h)
             if text:
                 return text
         except httpx.HTTPStatusError as e:
-            # 404/400 if heading not found for that CID; try next heading.
             if e.response.status_code in (400, 404):
                 continue
             raise
     return ""
+
+
+def extract_toxicity_tags(toxicity_text: str, *, max_items: int = 12) -> List[str]:
+    t = (toxicity_text or "").lower()
+    tags = []
+    keywords = [
+        ("carcin", "carcinogenicity"),
+        ("mutagen", "mutagenicity"),
+        ("reprotox", "reproductive_toxicity"),
+        ("teratogen", "developmental_toxicity"),
+        ("endocrine", "endocrine_disruption"),
+        ("sensit", "skin_sensitization"),
+        ("irrit", "irritation"),
+        ("acute toxicity", "acute_toxicity"),
+        ("chronic", "chronic_toxicity"),
+    ]
+    for needle, tag in keywords:
+        if needle in t:
+            tags.append(tag)
+
+    out = []
+    seen = set()
+    for x in tags:
+        if x in seen:
+            continue
+        seen.add(x)
+        out.append(x)
+        if len(out) >= max_items:
+            break
+    return out
+
+
+def to_record(*, cid: int, preferred_name: str, synonyms: List[str], description: str, toxicity_text: str) -> Dict[str, Any]:
+    display_name = preferred_name or f"CID {cid}"
+
+    concerns: List[Dict[str, Any]] = []
+    if toxicity_text:
+        concerns.append({"type": "toxicity_text", "text": toxicity_text})
+    for tag in extract_toxicity_tags(toxicity_text):
+        concerns.append({"type": "tag", "tag": tag})
+
+    return {
+        "name": display_name,
+        "normalizedName": normalize_name(display_name),
+        "riskLevel": None,
+        "riskScore": None,
+        "reviewBucket": None,
+        "category": None,
+        "description": description or "",
+        "source": "PUBCHEM",
+        "aliases": synonyms[:200],
+        "concerns": concerns,
+    }
 
 
 @app.get("/health")
@@ -210,14 +247,7 @@ async def autocomplete(
 async def search(
     q: str = Query(..., min_length=1),
     limit: int = Query(3, ge=1, le=10),
-    max_synonyms: int = Query(50, ge=0, le=500),
 ) -> Dict[str, Any]:
-    """
-    Returns top N CID matches for the query, with:
-      - name (best-effort display name)
-      - synonyms (up to max_synonyms)
-      - toxicity_text (flattened from PUG-View)
-    """
     async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_S) as client:
         try:
             cids = await name_to_cids(client, q)
@@ -233,16 +263,21 @@ async def search(
 
         async def build(cid: int) -> Dict[str, Any]:
             syns_task = asyncio.create_task(cid_synonyms(client, cid))
+            desc_task = asyncio.create_task(cid_description_text(client, cid))
             tox_task = asyncio.create_task(cid_toxicity_text(client, cid))
-            syns = await syns_task
-            tox = await tox_task
-            name = syns[0] if syns else f"CID {cid}"
-            return {
-                "cid": cid,
-                "name": name,
-                "synonyms": syns[:max_synonyms],
-                "toxicity_text": tox,
-            }
+
+            synonyms = await syns_task
+            description = await desc_task
+            toxicity_text = await tox_task
+
+            preferred_name = synonyms[0] if synonyms else f"CID {cid}"
+            return to_record(
+                cid=cid,
+                preferred_name=preferred_name,
+                synonyms=synonyms,
+                description=description,
+                toxicity_text=toxicity_text,
+            )
 
         results = await asyncio.gather(*(build(cid) for cid in cids))
         return {"query": q, "results": results}
