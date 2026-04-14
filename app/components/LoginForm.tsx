@@ -83,6 +83,13 @@ export default function LoginForm({ callbackUrl }: LoginFormProps) {
           {loading ? "Signing in..." : "Sign In"}
         </button>
 
+        <Link
+          href="/dashboard"
+          className="mt-3 block w-full rounded-2xl border border-neutral-300 bg-white px-5 py-3 text-center text-sm font-semibold text-neutral-900 transition hover:border-amber-300 hover:bg-amber-50"
+        >
+          Continue as Guest
+        </Link>
+
         <div className="mt-6 rounded-2xl bg-neutral-50 px-4 py-4 text-sm text-neutral-600">
           <p className="font-medium text-neutral-900">Demo account</p>
           <p className="mt-1">Email: demo@beautyscanner.app</p>

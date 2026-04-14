@@ -122,6 +122,13 @@ export default function SignUpForm({ callbackUrl }: SignUpFormProps) {
           {loading ? "Creating account..." : "Create Account"}
         </button>
 
+        <Link
+          href="/dashboard"
+          className="mt-3 block w-full rounded-2xl border border-neutral-300 bg-white px-5 py-3 text-center text-sm font-semibold text-neutral-900 transition hover:border-amber-300 hover:bg-amber-50"
+        >
+          Continue as Guest
+        </Link>
+
         <div className="mt-6 text-sm text-neutral-500">
           Already have an account?{" "}
           <Link

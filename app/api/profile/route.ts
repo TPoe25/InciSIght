@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { auth } from "@/lib/auth";
+import { getDatabaseErrorMessage } from "@/lib/databaseErrors";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -49,6 +50,12 @@ export async function GET() {
     });
   } catch (error) {
     console.error("PROFILE_GET_ERROR", error);
+    const databaseMessage = getDatabaseErrorMessage(error);
+
+    if (databaseMessage) {
+      return Response.json({ error: databaseMessage }, { status: 503 });
+    }
+
     return Response.json({ error: "Unable to load profile." }, { status: 500 });
   }
 }
@@ -95,6 +102,12 @@ export async function PATCH(req: Request) {
     });
   } catch (error) {
     console.error("PROFILE_PATCH_ERROR", error);
+    const databaseMessage = getDatabaseErrorMessage(error);
+
+    if (databaseMessage) {
+      return Response.json({ error: databaseMessage }, { status: 503 });
+    }
+
     return Response.json({ error: "Unable to save profile." }, { status: 500 });
   }
 }

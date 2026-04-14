@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { getDatabaseErrorMessage } from "@/lib/databaseErrors";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -58,6 +59,12 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error("REGISTER_ROUTE_ERROR", error);
+    const databaseMessage = getDatabaseErrorMessage(error);
+
+    if (databaseMessage) {
+      return Response.json({ error: databaseMessage }, { status: 503 });
+    }
+
     return Response.json({ error: "Unable to create account." }, { status: 500 });
   }
 }
