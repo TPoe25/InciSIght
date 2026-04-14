@@ -1,8 +1,11 @@
 import vision from "@google-cloud/vision";
+import { generateProductExplanation } from "@/lib/aiExplanation";
 import { extractIngredientCandidates } from "@/lib/parseIngredients";
 import { env } from "@/lib/env";
+import { getViewerExplanationProfile } from "@/lib/explanationProfile";
 import { matchIngredients } from "@/lib/matchIngredients";
 import { prisma } from "@/lib/prisma";
+import { calculateScore } from "@/lib/scoring";
 
 export const runtime = "nodejs";
 
@@ -18,8 +21,6 @@ type PackagingSignal = {
     category: string | null;
   };
 };
-
-type ScanMode = "ingredients" | "packaging";
 
 function createVisionClient() {
   if (env.GOOGLE_VISION_CREDENTIALS_JSON) {
@@ -255,12 +256,39 @@ export async function POST(req: Request) {
     const parsedIngredients = extractIngredientCandidates(text);
     const matchedIngredients = await matchIngredients(parsedIngredients);
     const packagingSignal = await assessPackagingSignal(text, logos);
+    const profile = await getViewerExplanationProfile();
+    const score =
+      mode === "ingredients" && matchedIngredients.length > 0
+        ? calculateScore(matchedIngredients)
+        : null;
+    const explanation =
+      mode === "ingredients" && matchedIngredients.length > 0
+        ? await generateProductExplanation({
+            ingredients: matchedIngredients.map((ingredient) => ({
+              name: ingredient.name,
+              riskLevel: ingredient.riskLevel,
+              riskScore: ingredient.riskScore,
+              category: ingredient.category,
+              source: ingredient.source,
+              concerns: Array.isArray(ingredient.concerns)
+                ? ingredient.concerns.filter(
+                    (concern): concern is string => typeof concern === "string"
+                  )
+                : [],
+            })),
+            score: score?.score ?? null,
+            color: score?.color ?? null,
+            profile,
+          })
+        : null;
 
     return Response.json({
       mode,
       text,
       parsedIngredients: mode === "ingredients" ? parsedIngredients : [],
       matchedIngredients: mode === "ingredients" ? matchedIngredients : [],
+      productScore: score,
+      explanation,
       packagingSignal,
       source: "google-vision",
       filename: file.name,

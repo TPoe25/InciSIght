@@ -1,5 +1,8 @@
 import { notFound } from "next/navigation";
+import { generateProductExplanation } from "@/lib/aiExplanation";
+import { getViewerExplanationProfile } from "@/lib/explanationProfile";
 import { prisma } from "@/lib/prisma";
+import { calculateScore } from "@/lib/scoring";
 
 async function getProduct(id: string) {
   return prisma.product.findUnique({
@@ -30,16 +33,104 @@ export default async function ProductPage({
     notFound();
   }
 
+  const profile = await getViewerExplanationProfile();
+  const ingredients = product.ingredients.map((item) => item.ingredient);
+  const score =
+    ingredients.length > 0
+      ? calculateScore(
+          ingredients.map((ingredient) => ({
+            name: ingredient.name,
+            riskLevel: ingredient.riskLevel,
+            riskScore: ingredient.riskScore,
+          }))
+        )
+      : null;
+  const explanation =
+    ingredients.length > 0
+      ? await generateProductExplanation({
+          productName: product.name,
+          score: score?.score ?? product.baseScore ?? null,
+          color: score?.color ?? ((product.scoreColor as "green" | "yellow" | "red" | null) ?? null),
+          profile,
+          ingredients: ingredients.map((ingredient) => ({
+            name: ingredient.name,
+            riskLevel: ingredient.riskLevel,
+            riskScore: ingredient.riskScore,
+            category: ingredient.category,
+            source: ingredient.source,
+            description: ingredient.description,
+            reviewBucket: ingredient.reviewBucket,
+            concerns: Array.isArray(ingredient.concerns)
+              ? ingredient.concerns.filter(
+                  (concern): concern is string => typeof concern === "string"
+                )
+              : [],
+          })),
+        })
+      : null;
+
   return (
     <div className="mx-auto max-w-2xl p-10">
       <h1 className="mb-4 text-2xl font-bold">{product.name}</h1>
       <div className="mb-4">
-        <span className="rounded bg-green-200 px-3 py-1">Score: {product.baseScore ?? "N/A"}</span>
+        <span className="rounded bg-green-200 px-3 py-1">
+          Score: {score?.score ?? product.baseScore ?? "N/A"}
+        </span>
       </div>
 
       <div className="mb-6 rounded bg-gray-100 p-4">
         <h2 className="mb-2 font-semibold">AI Explanation</h2>
-        <p>AI insights are generated on demand from the ingredient list.</p>
+        {!explanation ? (
+          <p>No ingredient list was available, so an explanation could not be generated.</p>
+        ) : (
+          <div className="space-y-3 text-sm text-gray-700">
+            {explanation.personalizationNote && (
+              <p className="rounded bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                {explanation.personalizationNote}
+              </p>
+            )}
+            <p>{explanation.summary}</p>
+            <p>{explanation.scoreContext}</p>
+            {explanation.allergyAlerts.length > 0 && (
+              <div className="space-y-2">
+                {explanation.allergyAlerts.map((alert) => (
+                  <p key={alert} className="rounded bg-amber-50 p-3 text-amber-800">
+                    {alert}
+                  </p>
+                ))}
+              </div>
+            )}
+            {explanation.flaggedIngredients.length > 0 && (
+              <div className="space-y-2">
+                {explanation.flaggedIngredients.map((ingredient) => (
+                  <div key={ingredient.name} className="rounded bg-white p-3">
+                    <p className="font-medium text-gray-900">
+                      {ingredient.name} • {ingredient.cautionLevel}
+                    </p>
+                    <p className="mt-1">{ingredient.reason}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p>
+              <span className="font-medium text-gray-900">Recommendation:</span>{" "}
+              {explanation.recommendation}
+            </p>
+            {explanation.audienceNotes.length > 0 && (
+              <div className="space-y-2">
+                {explanation.audienceNotes.map((note) => (
+                  <div key={note.focus} className="rounded bg-rose-50 p-3">
+                    <p className="font-medium text-gray-900">{note.label}</p>
+                    <p className="mt-1 text-gray-700">{note.summary}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="text-xs text-gray-500">
+              {explanation.confidenceNote} Source: {explanation.source}.
+            </p>
+          </div>
+        )}
       </div>
 
       <h3 className="mb-2 font-semibold">Ingredients</h3>

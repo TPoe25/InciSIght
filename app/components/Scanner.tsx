@@ -23,12 +23,39 @@ type IngredientMatch = {
   riskScore: number;
 };
 
+type ProductExplanation = {
+  summary: string;
+  scoreContext: string;
+  flaggedIngredients: {
+    name: string;
+    reason: string;
+    cautionLevel: "low" | "moderate" | "high";
+  }[];
+  recommendation: string;
+  confidenceNote: string;
+  personalizationNote: string | null;
+  allergyAlerts: string[];
+  audienceNotes: {
+    focus: "sensitive_skin" | "acne_prone" | "pregnancy_safe" | "fragrance_free";
+    label: string;
+    summary: string;
+  }[];
+  source: "ai" | "fallback";
+};
+
+type ProductScore = {
+  score: number;
+  color: "green" | "yellow" | "red";
+};
+
 type ScanState = {
   file: File | null;
   isFocused: boolean;
   status: string;
   parsedIngredients: string[];
   matchedIngredients: IngredientMatch[];
+  productScore: ProductScore | null;
+  explanation: ProductExplanation | null;
   packagingSignal: PackagingSignal | null;
 };
 
@@ -38,6 +65,8 @@ const emptyScanState: ScanState = {
   status: "",
   parsedIngredients: [],
   matchedIngredients: [],
+  productScore: null,
+  explanation: null,
   packagingSignal: null,
 };
 
@@ -95,6 +124,8 @@ export default function Scanner() {
           : "Checking packaging text, logo clues, and barcode hints...",
       parsedIngredients: [],
       matchedIngredients: [],
+      productScore: null,
+      explanation: null,
       packagingSignal: null,
     }));
 
@@ -121,6 +152,8 @@ export default function Scanner() {
       ...previous,
       parsedIngredients: Array.isArray(data.parsedIngredients) ? data.parsedIngredients : [],
       matchedIngredients: Array.isArray(data.matchedIngredients) ? data.matchedIngredients : [],
+      productScore: data.productScore ?? null,
+      explanation: data.explanation ?? null,
       packagingSignal: data.packagingSignal ?? null,
       status: !data.text
         ? "No text found."
@@ -233,6 +266,12 @@ export default function Scanner() {
           {ingredientScan.matchedIngredients.length > 0 && (
             <div className="mt-4 rounded-2xl border border-neutral-200 bg-white px-4 py-4">
               <h3 className="text-sm font-semibold text-neutral-900">Matched Ingredients</h3>
+              {ingredientScan.productScore && (
+                <p className="mt-1 text-xs text-neutral-500">
+                  Product score: {ingredientScan.productScore.score} •{" "}
+                  {ingredientScan.productScore.color}
+                </p>
+              )}
               <div className="mt-3 space-y-2">
                 {ingredientScan.matchedIngredients.map((ingredient) => (
                   <div
@@ -246,6 +285,70 @@ export default function Scanner() {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {ingredientScan.explanation && (
+            <div className="mt-4 rounded-2xl border border-neutral-200 bg-white px-4 py-4">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-sm font-semibold text-neutral-900">AI Explanation</h3>
+                <span className="text-[11px] uppercase tracking-[0.18em] text-neutral-500">
+                  {ingredientScan.explanation.source === "ai" ? "AI grounded" : "Rules fallback"}
+                </span>
+              </div>
+              <p className="mt-3 text-sm text-neutral-700">{ingredientScan.explanation.summary}</p>
+              {ingredientScan.explanation.personalizationNote && (
+                <p className="mt-3 rounded-2xl bg-rose-50 px-4 py-3 text-xs text-rose-700">
+                  {ingredientScan.explanation.personalizationNote}
+                </p>
+              )}
+              <p className="mt-3 text-sm text-neutral-600">
+                {ingredientScan.explanation.scoreContext}
+              </p>
+              {ingredientScan.explanation.allergyAlerts.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  {ingredientScan.explanation.allergyAlerts.map((alert) => (
+                    <div
+                      key={alert}
+                      className="rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-800"
+                    >
+                      {alert}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {ingredientScan.explanation.flaggedIngredients.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  {ingredientScan.explanation.flaggedIngredients.map((ingredient) => (
+                    <div
+                      key={ingredient.name}
+                      className="rounded-2xl bg-neutral-50 px-4 py-3 text-sm text-neutral-700"
+                    >
+                      <p className="font-medium text-neutral-900">
+                        {ingredient.name} • {ingredient.cautionLevel}
+                      </p>
+                      <p className="mt-1">{ingredient.reason}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p className="mt-4 text-sm text-neutral-700">
+                <span className="font-medium text-neutral-900">Recommendation:</span>{" "}
+                {ingredientScan.explanation.recommendation}
+              </p>
+              {ingredientScan.explanation.audienceNotes.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  {ingredientScan.explanation.audienceNotes.map((note) => (
+                    <div key={note.focus} className="rounded-2xl bg-rose-50 px-4 py-3 text-sm">
+                      <p className="font-medium text-neutral-900">{note.label}</p>
+                      <p className="mt-1 text-neutral-700">{note.summary}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p className="mt-3 text-xs text-neutral-500">
+                {ingredientScan.explanation.confidenceNote}
+              </p>
             </div>
           )}
         </section>

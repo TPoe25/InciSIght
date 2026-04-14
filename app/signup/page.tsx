@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
-import LoginForm from "../components/LoginForm";
 import { auth } from "@/lib/auth";
+import SignUpForm from "../components/SignUpForm";
 
-export default async function LoginPage({
+export default async function SignUpPage({
   searchParams,
 }: {
   searchParams: Promise<{ callbackUrl?: string }>;
@@ -16,5 +16,5 @@ export default async function LoginPage({
   const params = await searchParams;
   const callbackUrl = params.callbackUrl || "/dashboard";
 
-  return <LoginForm callbackUrl={callbackUrl} />;
+  return <SignUpForm callbackUrl={callbackUrl} />;
 }
