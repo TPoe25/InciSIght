@@ -11,12 +11,12 @@ export default function Home() {
                         </div>
 
                         <h1 className="text-5xl font-bold tracking-tight text-neutral-900 sm:text-6xl">
-                            Beauty product scanning, made clear.
+                            InciSight makes ingredient scanning clear.
                         </h1>
 
                         <p className="mt-6 max-w-xl text-lg leading-8 text-neutral-600">
                             Scan labels, understand ingredients, compare products, and get
-                            AI-powered explanations that actually make sense.
+                            AI-powered explanations that actually make sense with InciSight.
                         </p>
 
                         <div className="mt-8 flex flex-wrap gap-4">

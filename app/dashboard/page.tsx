@@ -11,7 +11,7 @@ export default function Dashboard() {
               Dashboard
             </p>
             <h1 className="text-4xl font-bold tracking-tight text-neutral-900">
-              Beauty Scanner
+              InciSight
             </h1>
             <p className="mt-2 max-w-2xl text-neutral-600">
               Search products, scan ingredient labels, and get AI-powered

@@ -1,13 +1,13 @@
-# AI Beauty Product Scanner
+# InciSight
 ## By Taylor Poe, Jacob Griffith, & Alfredo Rosado
 > Scan • Understand • Decide  
-> A full-stack AI-powered beauty product scanner that helps users understand product ingredients, compare products, and make better purchasing decisions.
+> A full-stack AI-powered ingredient analysis app that helps users understand product ingredients, compare products, and make better purchasing decisions.
 
 ---
 
 ## Overview
 
-AI Beauty Product Scanner is a web-based application built to analyze beauty and skincare products using ingredient data, OCR, structured scoring, and AI-generated explanations.
+InciSight is a web-based application built to analyze beauty and skincare products using ingredient data, OCR, structured scoring, and AI-generated explanations.
 
 The goal of this project is to move beyond simple “good” or “bad” product ratings and create a system that can:
 
@@ -25,9 +25,9 @@ This project was built as a team capstone, but it is being designed like a real 
 
 ## Live Demo
 
-- Main App: `https://beauty-ingredient-scanner.vercel.app/`
-- Dashboard: `https://beauty-ingredient-scanner.vercel.app/dashboard`
-- Compare: `https://beauty-ingredient-scanner.vercel.app/compare`
+- Main App: update this to your current InciSight deployment URL
+- Dashboard: `/dashboard`
+- Compare: `/compare`
 
 ---
 
@@ -43,7 +43,7 @@ This project was built as a team capstone, but it is being designed like a real 
 
 Most consumers do not understand ingredient labels.
 
-Existing beauty-scanner apps often:
+Existing ingredient-scanning apps often:
 - rely on generic scoring systems
 - do not explain why a product is flagged
 - do not support meaningful comparison
@@ -127,6 +127,10 @@ The app is built on a real dataset pipeline rather than hardcoded demo data.
   - dataset transformation
   - batch imports
   - product + ingredient seeding
+
+## Data Attribution
+
+Data by BeautyFeeds.io, PubChem, NIH, and EU Banned Ingredients.
 
 ---
 

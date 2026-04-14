@@ -1,5 +1,5 @@
 {
-  "name": "beauty-scanner",
+  "name": "incisight",
   "private": true,
   "engines": {
     "node": ">=20.0.0"
