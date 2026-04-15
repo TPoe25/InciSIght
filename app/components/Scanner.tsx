@@ -26,6 +26,8 @@ type IngredientMatch = {
 type ProductExplanation = {
   summary: string;
   scoreContext: string;
+  reasons: string[];
+  tradeoffs: string[];
   flaggedIngredients: {
     name: string;
     reason: string;
@@ -305,6 +307,34 @@ export default function Scanner() {
               <p className="mt-3 text-sm text-neutral-600">
                 {ingredientScan.explanation.scoreContext}
               </p>
+              <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                <div className="rounded-2xl bg-neutral-50 px-4 py-4">
+                  <p className="text-sm font-medium text-neutral-900">What is driving this</p>
+                  <div className="mt-3 space-y-2">
+                    {ingredientScan.explanation.reasons.map((reason) => (
+                      <p key={reason} className="rounded-xl bg-white px-3 py-2 text-sm text-neutral-700">
+                        {reason}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+                <div className="rounded-2xl bg-neutral-50 px-4 py-4">
+                  <p className="text-sm font-medium text-neutral-900">Tradeoffs</p>
+                  {ingredientScan.explanation.tradeoffs.length > 0 ? (
+                    <div className="mt-3 space-y-2">
+                      {ingredientScan.explanation.tradeoffs.map((tradeoff) => (
+                        <p key={tradeoff} className="rounded-xl bg-white px-3 py-2 text-sm text-neutral-700">
+                          {tradeoff}
+                        </p>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-3 rounded-xl bg-white px-3 py-2 text-sm text-neutral-600">
+                      No major tradeoff stands out beyond the ingredients listed below.
+                    </p>
+                  )}
+                </div>
+              </div>
               {ingredientScan.explanation.allergyAlerts.length > 0 && (
                 <div className="mt-4 space-y-2">
                   {ingredientScan.explanation.allergyAlerts.map((alert) => (

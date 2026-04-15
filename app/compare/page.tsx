@@ -4,23 +4,15 @@ import { useState } from "react";
 import ProductAutocomplete from "../components/ProductAutocomplete";
 
 type CompareResponse = {
-  ingredientDetails: {
-    name: string;
-    riskLevel: string;
-    riskScore: number;
-    category?: string | null;
-    source?: string | null;
-    reviewBucket: string;
-    description?: string | null;
-    concerns: string[];
-    aliases: string[];
-  };
   productA: {
     id: string;
     name: string;
     brand?: string | null;
     score: number;
     color: string;
+    ingredientCount: number;
+    standoutBenefits: string[];
+    standoutConcerns: string[];
     flaggedIngredients: {
       name: string;
       riskLevel: string;
@@ -39,6 +31,9 @@ type CompareResponse = {
     brand?: string | null;
     score: number;
     color: string;
+    ingredientCount: number;
+    standoutBenefits: string[];
+    standoutConcerns: string[];
     flaggedIngredients: {
       name: string;
       riskLevel: string;
@@ -53,6 +48,13 @@ type CompareResponse = {
   };
   better: "A" | "B" | "Tie";
   summary: string;
+  reasons: string[];
+  tradeoffs: string[];
+  audienceNotes: {
+    label: string;
+    winner: "A" | "B" | "Tie";
+    summary: string;
+  }[];
 };
 
 export default function ComparePage() {
@@ -193,6 +195,51 @@ export default function ComparePage() {
                 {result.better === "Tie" && "These products are closely matched"}
               </h2>
               <p className="mt-3 text-neutral-600">{result.summary}</p>
+
+              <div className="mt-5 grid gap-4 lg:grid-cols-2">
+                <div className="rounded-2xl bg-neutral-50 p-4">
+                  <p className="text-sm font-medium text-neutral-800">Why this looks better</p>
+                  <ul className="mt-3 space-y-2 text-sm text-neutral-600">
+                    {result.reasons.map((reason) => (
+                      <li key={reason} className="rounded-xl bg-white px-3 py-2">
+                        {reason}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="rounded-2xl bg-neutral-50 p-4">
+                  <p className="text-sm font-medium text-neutral-800">Tradeoffs to know</p>
+                  {result.tradeoffs.length ? (
+                    <ul className="mt-3 space-y-2 text-sm text-neutral-600">
+                      {result.tradeoffs.map((tradeoff) => (
+                        <li key={tradeoff} className="rounded-xl bg-white px-3 py-2">
+                          {tradeoff}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-3 rounded-xl bg-white px-3 py-2 text-sm text-neutral-600">
+                      No major tradeoff stands out beyond the ingredients listed below.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-2xl bg-amber-50 p-4">
+                <p className="text-sm font-medium text-neutral-800">Audience fit</p>
+                <div className="mt-3 grid gap-3 md:grid-cols-3">
+                  {result.audienceNotes.map((note) => (
+                    <div key={note.label} className="rounded-xl bg-white px-3 py-3 text-sm">
+                      <p className="font-medium text-neutral-900">{note.label}</p>
+                      <p className="mt-1 text-xs uppercase tracking-wide text-neutral-500">
+                        {note.winner === "Tie" ? "Tie" : `Leans Product ${note.winner}`}
+                      </p>
+                      <p className="mt-2 text-neutral-600">{note.summary}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </section>
 
             <section className="mt-6 grid gap-6 lg:grid-cols-2">
@@ -226,6 +273,30 @@ export default function ComparePage() {
                 </div>
 
                 <div className="mt-6">
+                  <div className="rounded-2xl bg-neutral-50 p-4">
+                    <p className="text-sm font-medium text-neutral-500">At a glance</p>
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-xl bg-white px-3 py-3 text-sm text-neutral-700">
+                        <p className="font-medium text-neutral-900">Ingredient count</p>
+                        <p className="mt-1">{result.productA.ingredientCount}</p>
+                      </div>
+                      <div className="rounded-xl bg-white px-3 py-3 text-sm text-neutral-700">
+                        <p className="font-medium text-neutral-900">Standout benefits</p>
+                        <p className="mt-1">
+                          {result.productA.standoutBenefits.length
+                            ? result.productA.standoutBenefits.join(", ")
+                            : "No standout support ingredients called out yet."}
+                        </p>
+                      </div>
+                    </div>
+                    {result.productA.standoutConcerns.length > 0 && (
+                      <div className="mt-3 rounded-xl bg-white px-3 py-3 text-sm text-neutral-700">
+                        <p className="font-medium text-neutral-900">Main concern signals</p>
+                        <p className="mt-1">{result.productA.standoutConcerns.join(", ")}</p>
+                      </div>
+                    )}
+                  </div>
+
                   <p className="text-sm font-medium text-neutral-500">
                     Flagged Ingredients
                   </p>
@@ -323,6 +394,30 @@ export default function ComparePage() {
                 </div>
 
                 <div className="mt-6">
+                  <div className="rounded-2xl bg-neutral-50 p-4">
+                    <p className="text-sm font-medium text-neutral-500">At a glance</p>
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-xl bg-white px-3 py-3 text-sm text-neutral-700">
+                        <p className="font-medium text-neutral-900">Ingredient count</p>
+                        <p className="mt-1">{result.productB.ingredientCount}</p>
+                      </div>
+                      <div className="rounded-xl bg-white px-3 py-3 text-sm text-neutral-700">
+                        <p className="font-medium text-neutral-900">Standout benefits</p>
+                        <p className="mt-1">
+                          {result.productB.standoutBenefits.length
+                            ? result.productB.standoutBenefits.join(", ")
+                            : "No standout support ingredients called out yet."}
+                        </p>
+                      </div>
+                    </div>
+                    {result.productB.standoutConcerns.length > 0 && (
+                      <div className="mt-3 rounded-xl bg-white px-3 py-3 text-sm text-neutral-700">
+                        <p className="font-medium text-neutral-900">Main concern signals</p>
+                        <p className="mt-1">{result.productB.standoutConcerns.join(", ")}</p>
+                      </div>
+                    )}
+                  </div>
+
                   <p className="text-sm font-medium text-neutral-500">
                     Flagged Ingredients
                   </p>

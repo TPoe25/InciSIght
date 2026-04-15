@@ -91,6 +91,34 @@ export default async function ProductPage({
             )}
             <p>{explanation.summary}</p>
             <p>{explanation.scoreContext}</p>
+            <div className="grid gap-3 lg:grid-cols-2">
+              <div className="rounded bg-neutral-50 p-3">
+                <p className="font-medium text-gray-900">What is driving this</p>
+                <div className="mt-2 space-y-2">
+                  {explanation.reasons.map((reason) => (
+                    <p key={reason} className="rounded bg-white p-2 text-gray-700">
+                      {reason}
+                    </p>
+                  ))}
+                </div>
+              </div>
+              <div className="rounded bg-neutral-50 p-3">
+                <p className="font-medium text-gray-900">Tradeoffs</p>
+                {explanation.tradeoffs.length > 0 ? (
+                  <div className="mt-2 space-y-2">
+                    {explanation.tradeoffs.map((tradeoff) => (
+                      <p key={tradeoff} className="rounded bg-white p-2 text-gray-700">
+                        {tradeoff}
+                      </p>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-2 rounded bg-white p-2 text-gray-600">
+                    No major tradeoff stands out beyond the flagged ingredients shown here.
+                  </p>
+                )}
+              </div>
+            </div>
             {explanation.allergyAlerts.length > 0 && (
               <div className="space-y-2">
                 {explanation.allergyAlerts.map((alert) => (

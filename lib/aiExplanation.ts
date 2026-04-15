@@ -36,6 +36,8 @@ export type ExplanationInput = {
 const explanationSchema = z.object({
   summary: z.string().min(1),
   scoreContext: z.string().min(1),
+  reasons: z.array(z.string().min(1)).max(5),
+  tradeoffs: z.array(z.string().min(1)).max(4),
   flaggedIngredients: z
     .array(
       z.object({
@@ -314,18 +316,60 @@ function buildPersonalizationNote(input: ExplanationInput) {
   return `Personalized using your profile (${parts.join(" • ")}).`;
 }
 
-function buildFallbackExplanation(input: ExplanationInput): ProductExplanation {
-  const flaggedIngredients = input.ingredients
+function buildReasoningFacts(input: ExplanationInput) {
+  const flagged = input.ingredients
     .filter((ingredient) => {
       const riskLevel = ingredient.riskLevel.toLowerCase();
       return riskLevel === "high" || riskLevel === "moderate";
     })
-    .sort((a, b) => b.riskScore - a.riskScore)
-    .slice(0, 5);
+    .sort((a, b) => b.riskScore - a.riskScore);
+
+  const fragranceFlags = input.ingredients.filter((ingredient) =>
+    /fragrance|parfum|perfume/i.test(
+      `${ingredient.name} ${ingredient.category ?? ""} ${normalizeConcernList(ingredient.concerns).join(" ")}`
+    )
+  );
+
+  const barrierSupport = input.ingredients.filter((ingredient) =>
+    /ceramide|glycerin|hyaluronic|panthenol|niacinamide|squalane|cholesterol|betaine/i.test(
+      `${ingredient.name} ${ingredient.category ?? ""}`
+    )
+  );
+
+  const exfoliants = input.ingredients.filter((ingredient) =>
+    /salicy|glycolic|lactic|mandelic|acid|bha|aha/i.test(
+      `${ingredient.name} ${ingredient.category ?? ""}`
+    )
+  );
+
+  const retinoids = input.ingredients.filter((ingredient) =>
+    /retinol|retinal|retinyl|adapalene|tretinoin/i.test(ingredient.name)
+  );
+
+  const preservatives = input.ingredients.filter((ingredient) =>
+    /phenoxyethanol|paraben|benzoate|sorbate|preservative/i.test(
+      `${ingredient.name} ${ingredient.category ?? ""}`
+    )
+  );
 
   const unknownCount = input.ingredients.filter(
     (ingredient) => ingredient.riskLevel.toLowerCase() === "unknown"
   ).length;
+
+  return {
+    flagged,
+    fragranceFlags,
+    barrierSupport,
+    exfoliants,
+    retinoids,
+    preservatives,
+    unknownCount,
+  };
+}
+
+function buildFallbackExplanation(input: ExplanationInput): ProductExplanation {
+  const facts = buildReasoningFacts(input);
+  const flaggedIngredients = facts.flagged.slice(0, 5);
 
   const summaryParts = [];
 
@@ -359,28 +403,79 @@ function buildFallbackExplanation(input: ExplanationInput): ProductExplanation {
     );
   }
 
+  if (facts.barrierSupport.length > 0) {
+    summaryParts.push(
+      `Supportive ingredients like ${facts.barrierSupport
+        .slice(0, 3)
+        .map((ingredient) => ingredient.name)
+        .join(", ")} help explain the formula's stronger hydration or barrier-support profile.`
+    );
+  }
+
   const scoreContext =
     typeof input.score === "number"
-      ? `The score reflects the sum of stored ingredient risk scores, so lower-scored products accumulate more flagged ingredients or higher penalties.`
+      ? "The score reflects the sum of stored ingredient risk scores, so flagged ingredients, fragrance-related signals, and stronger actives pull the score down more quickly."
       : "A product score was not available, so this explanation relies only on the ingredient-level risk data.";
 
   const recommendation =
     input.color === "red"
-      ? "Treat this formula cautiously and review whether the flagged ingredients align with your own sensitivities or product goals."
+      ? "Treat this formula cautiously. The key question is whether the flagged ingredients are acceptable for your own sensitivities and whether the formula's benefits justify those tradeoffs."
       : input.color === "yellow"
-        ? "This formula may still work for some users, but the flagged ingredients are worth checking before you decide."
-        : "Based on the current dataset, this formula looks relatively lower concern overall, though personal sensitivities can still matter.";
+        ? "This formula sits in the middle. It may still work for some users, but the caution signals are worth checking before you decide."
+        : "Based on the current dataset, this formula looks relatively lower concern overall and may be the easier choice if you want fewer obvious risk signals.";
 
   const confidenceNote =
-    unknownCount > 0
-      ? `Confidence is limited because ${unknownCount} ingredient${unknownCount === 1 ? "" : "s"} could not be matched confidently in the database.`
+    facts.unknownCount > 0
+      ? `Confidence is limited because ${facts.unknownCount} ingredient${facts.unknownCount === 1 ? "" : "s"} could not be matched confidently in the database, so some OCR or dataset context may still be missing.`
       : "Confidence is stronger here because the explanation is grounded in the matched ingredient records rather than OCR text alone.";
   const personalizationNote = buildPersonalizationNote(input);
   const allergyAlerts = buildAllergyAlerts(input);
+  const reasons = [
+    flaggedIngredients.length > 0
+      ? `The main score drivers are ${flaggedIngredients
+          .slice(0, 3)
+          .map((ingredient) => ingredient.name)
+          .join(", ")}, which carry the strongest caution signals in the matched data.`
+      : "No major flagged ingredients were found in the current dataset, which helps keep the formula in a lower-concern range.",
+    facts.fragranceFlags.length > 0
+      ? `Fragrance-related signals show up in ${facts.fragranceFlags
+          .slice(0, 3)
+          .map((ingredient) => ingredient.name)
+          .join(", ")}, which matters most for sensitive or allergy-prone users.`
+      : "The matched list does not show obvious fragrance-related signals, which may make the formula easier for fragrance-sensitive users.",
+    facts.barrierSupport.length > 0
+      ? `Supportive ingredients such as ${facts.barrierSupport
+          .slice(0, 3)
+          .map((ingredient) => ingredient.name)
+          .join(", ")} strengthen the hydration or barrier-support side of the formula.`
+      : "The matched records do not show many classic hydration or barrier-support ingredients, so the explanation is driven more by caution signals than support ingredients.",
+  ];
+  const tradeoffs = [
+    facts.exfoliants.length > 0
+      ? `It includes exfoliant-style ingredients like ${facts.exfoliants
+          .slice(0, 2)
+          .map((ingredient) => ingredient.name)
+          .join(", ")}, which may help some goals but can raise dryness or irritation risk.`
+      : null,
+    facts.retinoids.length > 0
+      ? `Retinoid-style ingredients such as ${facts.retinoids
+          .slice(0, 2)
+          .map((ingredient) => ingredient.name)
+          .join(", ")} increase the need for extra caution, especially in pregnancy-focused screening.`
+      : null,
+    facts.preservatives.length > 0
+      ? `Preservatives like ${facts.preservatives
+          .slice(0, 2)
+          .map((ingredient) => ingredient.name)
+          .join(", ")} are common and useful for stability, but they can still matter for highly reactive users.`
+      : null,
+  ].filter((value): value is string => Boolean(value));
 
   return {
     summary: summaryParts.join(" "),
     scoreContext,
+    reasons: reasons.slice(0, 5),
+    tradeoffs: tradeoffs.slice(0, 4),
     flaggedIngredients: flaggedIngredients.map((ingredient) => ({
       name: ingredient.name,
       reason:
@@ -414,6 +509,7 @@ export async function generateProductExplanation(
   input: ExplanationInput
 ): Promise<ProductExplanation> {
   const fallback = buildFallbackExplanation(input);
+  const facts = buildReasoningFacts(input);
 
   if (!openai || input.ingredients.length === 0) {
     return fallback;
@@ -439,6 +535,17 @@ export async function generateProductExplanation(
       concerns: normalizeConcernList(ingredient.concerns),
       description: ingredient.description ?? null,
     })),
+    reasoningFacts: {
+      flaggedCount: facts.flagged.length,
+      fragranceCount: facts.fragranceFlags.length,
+      barrierSupportCount: facts.barrierSupport.length,
+      exfoliantCount: facts.exfoliants.length,
+      retinoidCount: facts.retinoids.length,
+      preservativeCount: facts.preservatives.length,
+      unknownCount: facts.unknownCount,
+      topFlagged: facts.flagged.slice(0, 5).map((ingredient) => ingredient.name),
+      topBarrierSupport: facts.barrierSupport.slice(0, 5).map((ingredient) => ingredient.name),
+    },
   };
 
   const prompt = [
@@ -447,7 +554,10 @@ export async function generateProductExplanation(
     "Do not invent toxicology, medical effects, or regulatory claims that are not explicitly present.",
     "If the data is limited, say so plainly.",
     "Prefer clear consumer-friendly language.",
-    "Return JSON only with keys: summary, scoreContext, flaggedIngredients, recommendation, confidenceNote, personalizationNote, allergyAlerts, audienceNotes.",
+    "Explain what is driving the score, what the main tradeoffs are, and who the formula may suit.",
+    "Return JSON only with keys: summary, scoreContext, reasons, tradeoffs, flaggedIngredients, recommendation, confidenceNote, personalizationNote, allergyAlerts, audienceNotes.",
+    "reasons must be short, concrete statements about what is driving the result.",
+    "tradeoffs must be short, concrete statements about downsides, uncertainty, or why some users may still want to review the formula closely.",
     "flaggedIngredients must contain at most 5 items, and each item must have name, reason, and cautionLevel.",
     "Use only the prioritizedFocuses from profile when building audienceNotes. Do not add extra focus values.",
     "For pregnancy_safe, be conservative and explicitly note when the data is insufficient.",
