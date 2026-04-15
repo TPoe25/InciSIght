@@ -458,5 +458,3 @@ This README reflects the current codebase at a high level, including:
 - OCR scan flow
 - PubChem enrichment support
 - AI explanation pipeline
-
-If you add new data providers, storage layers, or auth providers later, update this README alongside the implementation so local setup stays accurate.
