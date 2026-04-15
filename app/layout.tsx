@@ -17,7 +17,7 @@ export default function RootLayout({
       <body className="min-h-screen bg-neutral-50 text-neutral-900 antialiased">
         <div className="flex min-h-screen flex-col">
           <header className="border-b border-neutral-200/80 bg-white/90 backdrop-blur-sm">
-            <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+            <div className="relative z-20 mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
               <Link href="/" className="flex items-center gap-3">
                 <div className="rounded-2xl bg-rose-100 px-3 py-2 text-sm font-semibold text-rose-700">
                   InciSight

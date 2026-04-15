@@ -1,138 +1,345 @@
 # InciSight
 ## By Taylor Poe, Jacob Griffith, & Alfredo Rosado
-> Scan • Understand • Decide  
-> A full-stack AI-powered ingredient analysis app that helps users understand product ingredients, compare products, and make better purchasing decisions.
 
----
+> Scan • Understand • Decide
+> A full-stack ingredient intelligence app for beauty and skincare products.
 
 ## Overview
 
-InciSight is a web-based application built to analyze beauty and skincare products using ingredient data, OCR, structured scoring, and AI-generated explanations.
+InciSight helps users understand cosmetic ingredient lists in a more practical way than a simple red/yellow/green score. The app combines a seeded product catalog, ingredient-level risk data, OCR, database-backed search, product comparison, and AI-generated explanations.
 
-The goal of this project is to move beyond simple “good” or “bad” product ratings and create a system that can:
+The project started as a capstone, but the codebase is structured like a real product:
 
-- scan product labels
-- extract ingredient data
-- match ingredients against a structured database
-- score product safety
-- explain flagged ingredients in plain language
-- compare products side-by-side
-- scale using real product datasets and enrichment sources
+- guest and signed-in user flows
+- database-backed product and ingredient search
+- OCR-powered ingredient scanning
+- structured ingredient matching and scoring
+- grounded AI explanations with fallback behavior
+- profile-based personalization
+- optional PubChem enrichment for imported ingredients
 
-This project was built as a team capstone, but it is being designed like a real product with room for continued growth, monetization, and production scaling.
+## Quick Start
 
----
+For the fastest local setup:
 
-## Live Demo
+```bash
+npm install
+npm run db:push
+npm run db:seed
+npm run dev
+```
 
-- Main App: update this to your current InciSight deployment URL
-- Dashboard: `/dashboard`
-- Compare: `/compare`
+Then open:
 
----
+- `http://localhost:3000`
 
-## Team
+Optional PubChem enrichment after the main app is working:
 
-- **Taylor Poe** — product direction, full-stack implementation, UI/UX, architecture, dataset integration
-- **Jacob Griffith** — data pipeline work, PubChem integration, backend/data enrichment
-- **Alfredo Rosado** — presentation, product planning, future AI chatbox workflow and user interaction features
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install fastapi uvicorn httpx
+python3 -m uvicorn pubchem_service:app --host 127.0.0.1 --port 8000
+npm run db:enrich:pubchem
+```
 
----
-
-## Problem
-
-Most consumers do not understand ingredient labels.
-
-Existing ingredient-scanning apps often:
-- rely on generic scoring systems
-- do not explain why a product is flagged
-- do not support meaningful comparison
-- do not personalize results
-- provide limited transparency into ingredient-level concerns
-
-This leaves users with a score, but not enough understanding to make a confident decision.
-
----
-
-## Solution
-
-This application creates a full import-and-analysis pipeline that powers a real product experience.
+## What The App Does
 
 Users can:
 
-- search for products
-- scan ingredient labels using OCR
-- analyze ingredients against a database
-- receive a safety score
-- compare products side-by-side
-- get AI-driven explanations
-- use packaging checks as an additional signal
+- search products from the catalog
+- open product detail pages
+- scan ingredient labels with OCR
+- compare products side by side
+- view flagged ingredients and score breakdowns
+- get AI explanations grounded in stored ingredient metadata
+- continue as a guest or sign in for profile-based personalization
 
-The app is built on a real dataset pipeline rather than hardcoded demo data.
+Signed-in users can additionally:
 
----
+- save profile settings
+- store skin type, preferences, and allergies
+- receive explanation notes tailored to their profile
+- get allergy-aware alerts when there is a direct match
 
 ## Core Features
 
-### MVP Features
-
-- Product search
-- Product comparison
-- Ingredient label OCR scanning
-- Ingredient parsing and matching
-- Structured safety scoring
-- Product score badges (green / yellow / red)
-- Ingredient previews
-- Flagged ingredient counts
-- Imported product catalog support
-- Database-backed UI
-
-### Advanced Features / In Progress
-
-- Packaging consistency checks
-- PubChem enrichment for unknown ingredients
-- Expanded ingredient normalization and aliases
-- AI chatbox for ingredient/product questions
-- Personalized scoring
-- Alerts and saved product history
-
----
+- Product search with dropdown suggestions
+- Product details with ingredient breakdowns
+- Product comparison API and UI
+- OCR ingredient scanning with Google Vision
+- Ingredient parsing and normalization
+- Ingredient-to-database matching
+- Rule-based product scoring
+- AI explanation generation using OpenAI
+- Personalized explanation focus areas for signed-in users
+- Guest mode support
+- Account creation and sign-in with Auth.js / NextAuth credentials
+- Packaging-signal scan support
+- PubChem enrichment for imported ingredients
+- COSING Annex II / EU banned ingredient source data in the seed pipeline
 
 ## Tech Stack
 
 ### Frontend
-- **Next.js**
-- **React**
-- **Tailwind CSS**
+
+- Next.js 16
+- React 19
+- TypeScript
+- Tailwind CSS 4
 
 ### Backend
-- **Next.js API Routes**
-- **TypeScript**
+
+- Next.js App Router
+- Next.js Route Handlers
+- Node.js
+- Zod for validation
+
+### Authentication
+
+- Auth.js / NextAuth v5 beta
+- Credentials-based sign-in
+- bcryptjs password hashing
 
 ### Database / ORM
-- **PostgreSQL**
-- **Prisma**
 
-### OCR / AI / Enrichment
-- **Google Vision API** for OCR
-- **OpenAI API** for AI explanations
-- **PubChem** enrichment service for unknown ingredients
+- PostgreSQL
+- Prisma ORM
+- `@prisma/adapter-pg`
+- Neon Postgres on Vercel is the current recommended database target
 
-### Deployment
-- **Vercel**
+### AI / OCR / Enrichment
+
+- OpenAI API for grounded AI explanations
+- Google Cloud Vision for OCR
+- PubChem local FastAPI service for ingredient enrichment
+- Custom TypeScript enrichment/import scripts
 
 ### Data Pipeline
-- Custom TypeScript scripts for:
-  - Excel conversion
-  - dataset transformation
-  - batch imports
-  - product + ingredient seeding
 
-## Data Attribution
+- TypeScript transform scripts for imported datasets
+- JSON seed pipeline for ingredient and product data
+- COSING Annex II transformation pipeline
+- Optional PubChem enrichment pass after seeding
 
-Data by BeautyFeeds.io, PubChem, NIH, and EU Banned Ingredients.
+### Deployment
 
----
+- Vercel
+
+## Data Sources
+
+The repository currently references and/or derives data from:
+
+- BeautyFeeds.io product datasets
+- PubChem
+- NIH-linked ingredient information used in enrichment workflows
+- EU COSING Annex II banned ingredient data
+
+## Repository Structure
+
+High-level directories and key files:
+
+- `app/` — Next.js pages, route handlers, and UI components
+- `lib/` — shared server/client helpers, auth, Prisma, scoring, AI explanation logic
+- `prisma/` — Prisma schema, seed script, enrichment scripts
+- `data/` — transformed ingredient and product seed data
+- `data/raw/` — raw import inputs
+- `pubchem_service.py` — local FastAPI service used by PubChem enrichment
+- `scripts/` — dataset transformation utilities
+
+## Environment Variables
+
+At minimum, local development typically needs:
+
+```env
+DATABASE_URL=
+AUTH_SECRET=
+OPENAI_API_KEY=
+GOOGLE_APPLICATION_CREDENTIALS=
+PUBCHEM_SERVICE_URL=http://127.0.0.1:8000
+```
+
+The app also supports Vercel-style Postgres env fallbacks:
+
+- `POSTGRES_PRISMA_URL`
+- `POSTGRES_URL`
+- `DATABASE_POSTGRES_URL`
+- `NEXTAUTH_SECRET` as a fallback for `AUTH_SECRET`
+
+## Installation
+
+### 1. Clone and install dependencies
+
+```bash
+git clone <your-repo-url>
+cd InciSight
+npm install
+```
+
+### 2. Configure environment variables
+
+Create or update `.env.local` with your local settings.
+
+For database setup, use a working Postgres connection string. This project was updated to work well with Neon / Vercel-managed Postgres-style env vars.
+
+### 3. Initialize the database
+
+Push the Prisma schema:
+
+```bash
+npm run db:push
+```
+
+Seed the database:
+
+```bash
+npm run db:seed
+```
+
+### 4. Start the app
+
+```bash
+npm run dev
+```
+
+Then open:
+
+- `http://localhost:3000`
+
+## PubChem Enrichment Setup
+
+PubChem enrichment is optional. It improves imported ingredient metadata by adding synonyms and toxicity-related description text where matches are found.
+
+### 1. Create a Python virtual environment
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install fastapi uvicorn httpx
+```
+
+### 2. Start the local PubChem service
+
+```bash
+python3 -m uvicorn pubchem_service:app --host 127.0.0.1 --port 8000
+```
+
+### 3. Make sure `.env.local` contains
+
+```env
+PUBCHEM_SERVICE_URL="http://127.0.0.1:8000"
+```
+
+### 4. Run enrichment in another terminal
+
+```bash
+npm run db:enrich:pubchem
+```
+
+## Dataset Import / Transform Commands
+
+Available project scripts:
+
+```bash
+npm run data:excel
+npm run data:excel:all
+npm run data:cosing
+```
+
+Database scripts:
+
+```bash
+npm run db:generate
+npm run db:push
+npm run db:seed
+npm run db:enrich:pubchem
+```
+
+Quality / build scripts:
+
+```bash
+npm run lint
+npm run build
+```
+
+## How To Use The App
+
+### Guest Flow
+
+- Open the dashboard
+- Search products
+- Scan ingredient labels
+- Compare products
+- Read product explanations without saved personalization
+
+### Signed-In Flow
+
+- Create an account or sign in
+- Open the dashboard
+- Update profile settings
+- Set skin type, preferences, and allergies
+- Re-run scans and product views with personalized explanation notes
+
+### Product Search
+
+- Use the product search bar on the dashboard
+- Select a product from the dropdown
+- Open its product detail page
+
+### Ingredient Scan
+
+- Upload an ingredient label image
+- Review parsed ingredients
+- Review matched ingredients and score
+- Read the AI explanation block
+
+### Compare Products
+
+- Open `/compare`
+- Select two products
+- Review scores, flagged ingredients, and summary result
+
+## AI Explanation Notes
+
+The explanation system is designed to be more grounded than a generic prompt-only summary.
+
+It currently:
+
+- uses stored ingredient metadata, risk level, score, concerns, and description
+- supports structured explanation output
+- falls back to rule-based explanations if AI is unavailable
+- can personalize notes for signed-in users based on profile data
+
+Guests still receive explanations, but without saved user-profile personalization.
+
+## Database Notes
+
+After switching to a fresh Postgres database:
+
+- `npm run db:push` creates the schema
+- `npm run db:seed` restores what the seed script knows how to import
+- `npm run db:enrich:pubchem` optionally enriches imported ingredients further
+
+Seed restores:
+
+- ingredient records from local JSON datasets
+- aliases
+- starter/demo user and profile
+- starter products
+- imported product catalog JSON data
+- product-to-ingredient relationships
+
+Seed does not automatically restore:
+
+- old user-created accounts from a previous unrelated database
+- old scan history unless separately migrated
+- any data that existed only in the old DB and not in the repository data files
+
+## Team
+
+- Taylor Poe — product direction, full-stack implementation, UI/UX, architecture, dataset integration
+- Jacob Griffith — data pipeline work, PubChem integration, backend and enrichment support
+- Alfredo Rosado — presentation, product planning, future AI workflow and interaction features
 
 ## Architecture
 
@@ -143,11 +350,12 @@ flowchart TD
     C[Seed Pipeline]
     D[(PostgreSQL Database)]
     E[Prisma ORM]
-    F[Next.js API Routes]
-    G[UI: Search / Compare / Scan]
+    F[Next.js Route Handlers]
+    G[UI Search Compare Scan]
     H[Google Vision OCR]
-    I[PubChem Enrichment]
+    I[PubChem Enrichment Service]
     J[OpenAI Explanations]
+    K[Profile Personalization]
 
     A --> B
     B --> C
@@ -158,3 +366,97 @@ flowchart TD
     G --> H
     F --> I
     F --> J
+    F --> K
+```
+
+## ER Diagram
+
+```mermaid
+erDiagram
+    User {
+        string id PK
+        string email
+        string password
+        datetime createdAt
+    }
+
+    UserProfile {
+        string id PK
+        string userId FK
+        string skinType
+        json preferences
+        json allergies
+    }
+
+    Product {
+        string id PK
+        string name
+        string brand
+        string category
+        string barcode
+        int baseScore
+        string scoreColor
+    }
+
+    Ingredient {
+        string id PK
+        string name
+        string normalizedName
+        string riskLevel
+        int riskScore
+        string description
+        string reviewBucket
+        string category
+        string source
+        json concerns
+    }
+
+    IngredientAlias {
+        string id PK
+        string alias
+        string ingredientId FK
+        datetime createdAt
+    }
+
+    ProductIngredient {
+        string productId FK
+        string ingredientId FK
+    }
+
+    Scan {
+        string id PK
+        string userId FK
+        string productId FK
+        int score
+        string color
+        datetime createdAt
+    }
+
+    Subscription {
+        string id PK
+        string userId FK
+        string plan
+    }
+
+    User ||--o| UserProfile : has
+    User ||--o{ Scan : creates
+    User ||--o| Subscription : has
+    Product ||--o{ ProductIngredient : contains
+    Ingredient ||--o{ ProductIngredient : appears_in
+    Ingredient ||--o{ IngredientAlias : has
+    Product ||--o{ Scan : scanned_as
+```
+
+## Current Status
+
+This README reflects the current codebase at a high level, including:
+
+- guest + signed-in flows
+- profile settings
+- Auth.js credentials auth
+- Prisma + Postgres / Neon setup
+- OCR scan flow
+- PubChem enrichment support
+- AI explanation pipeline
+
+If you add new data providers, storage layers, or auth providers later, update this README alongside the implementation so local setup stays accurate.
