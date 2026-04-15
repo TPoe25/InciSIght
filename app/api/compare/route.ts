@@ -25,6 +25,130 @@ type SerializedIngredient = {
   aliases: string[];
 };
 
+type ComparisonProductInput = {
+  name: string;
+  brand?: string | null;
+  ingredients: {
+    name: string;
+    riskLevel?: string | null;
+    riskScore?: number | null;
+    category?: string | null;
+    source?: string | null;
+    reviewBucket?: string | null;
+    description?: string | null;
+    concerns?: unknown;
+    aliases?: unknown;
+  }[];
+};
+
+type ComparisonProductResponse = {
+  id: string | null;
+  name: string;
+  brand: string | null;
+  score: number;
+  color: string;
+  flaggedIngredients: SerializedIngredient[];
+  ingredientCount: number;
+  standoutBenefits: string[];
+  standoutConcerns: string[];
+  source: "catalog" | "scan";
+  lens: ProductLens;
+};
+
+function normalizeCustomIngredient(
+  ingredient: ComparisonProductInput["ingredients"][number]
+): IngredientLike {
+  return {
+    name: ingredient.name,
+    riskLevel: ingredient.riskLevel ?? "unknown",
+    riskScore: typeof ingredient.riskScore === "number" ? ingredient.riskScore : 5,
+    category: ingredient.category ?? null,
+    source: ingredient.source ?? "OCR_SCAN",
+    reviewBucket: ingredient.reviewBucket ?? "ocr_scan",
+    description: ingredient.description ?? null,
+    concerns: Array.isArray(ingredient.concerns) ? ingredient.concerns : [],
+    aliases: Array.isArray(ingredient.aliases)
+      ? ingredient.aliases
+          .filter((alias): alias is string => typeof alias === "string")
+          .map((alias) => ({ alias }))
+      : [],
+  };
+}
+
+async function loadComparisonProduct(
+  productId: string | undefined,
+  customInput: ComparisonProductInput | undefined,
+  fallbackLabel: string
+): Promise<ComparisonProductResponse | null> {
+  if (customInput) {
+    const ingredients = customInput.ingredients
+      .filter((ingredient) => typeof ingredient.name === "string" && ingredient.name.trim().length > 0)
+      .map(normalizeCustomIngredient);
+
+    if (!ingredients.length) {
+      return null;
+    }
+
+    const score = calculateScore(ingredients);
+    const lens = buildProductLens(ingredients);
+
+    return {
+      id: null,
+      name: customInput.name?.trim() || fallbackLabel,
+      brand: customInput.brand?.trim() || null,
+      score: score.score,
+      color: score.color,
+      flaggedIngredients: lens.flaggedIngredients,
+      ingredientCount: lens.ingredientCount,
+      standoutBenefits: lens.standoutBenefits,
+      standoutConcerns: lens.standoutConcerns,
+      source: "scan",
+      lens,
+    };
+  }
+
+  if (!productId) {
+    return null;
+  }
+
+  const product = await prisma.product.findUnique({
+    where: { id: productId },
+    include: {
+      ingredients: {
+        include: {
+          ingredient: {
+            include: {
+              aliases: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!product) {
+    return null;
+  }
+
+  const ingredients = product.ingredients.map((item) => item.ingredient);
+  const score = calculateScore(ingredients);
+  const lens = buildProductLens(ingredients);
+
+  return {
+    id: product.id,
+    name: product.name,
+    brand: product.brand,
+    score: score.score,
+    color: score.color,
+    flaggedIngredients: lens.flaggedIngredients,
+    ingredientCount: lens.ingredientCount,
+    standoutBenefits: lens.standoutBenefits,
+    standoutConcerns: lens.standoutConcerns,
+    source: "catalog",
+    lens,
+  };
+}
+
 type ProductLens = {
   flaggedIngredients: SerializedIngredient[];
   ingredientCount: number;
@@ -337,44 +461,18 @@ function buildComparisonSummary(
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { productAId, productBId } = body;
+    const { productAId, productBId, productAInput, productBInput } = body;
 
-    if (!productAId || !productBId) {
+    if ((!productAId && !productAInput) || (!productBId && !productBInput)) {
       return Response.json(
-        { error: "Both product IDs are required." },
+        { error: "Each side needs either a selected product or a scanned ingredient panel." },
         { status: 400 }
       );
     }
 
     const [productA, productB] = await Promise.all([
-      prisma.product.findUnique({
-        where: { id: productAId },
-        include: {
-          ingredients: {
-            include: {
-              ingredient: {
-                include: {
-                  aliases: true,
-                },
-              },
-            },
-          },
-        },
-      }),
-      prisma.product.findUnique({
-        where: { id: productBId },
-        include: {
-          ingredients: {
-            include: {
-              ingredient: {
-                include: {
-                  aliases: true,
-                },
-              },
-            },
-          },
-        },
-      }),
+      loadComparisonProduct(productAId, productAInput, "Scanned Product A"),
+      loadComparisonProduct(productBId, productBInput, "Scanned Product B"),
     ]);
 
     if (!productA || !productB) {
@@ -384,21 +482,13 @@ export async function POST(req: Request) {
       );
     }
 
-    const ingredientsA = productA.ingredients.map((item) => item.ingredient);
-    const ingredientsB = productB.ingredients.map((item) => item.ingredient);
-
-    const scoreA = calculateScore(ingredientsA);
-    const scoreB = calculateScore(ingredientsB);
-
-    const lensA = buildProductLens(ingredientsA);
-    const lensB = buildProductLens(ingredientsB);
     const comparison = buildComparisonSummary(
       productA.name,
       productB.name,
-      scoreA.score,
-      scoreB.score,
-      lensA,
-      lensB
+      productA.score,
+      productB.score,
+      productA.lens,
+      productB.lens
     );
 
     return Response.json({
@@ -406,23 +496,25 @@ export async function POST(req: Request) {
         id: productA.id,
         name: productA.name,
         brand: productA.brand,
-        score: scoreA.score,
-        color: scoreA.color,
-        flaggedIngredients: lensA.flaggedIngredients,
-        ingredientCount: lensA.ingredientCount,
-        standoutBenefits: lensA.standoutBenefits,
-        standoutConcerns: lensA.standoutConcerns,
+        score: productA.score,
+        color: productA.color,
+        flaggedIngredients: productA.flaggedIngredients,
+        ingredientCount: productA.ingredientCount,
+        standoutBenefits: productA.standoutBenefits,
+        standoutConcerns: productA.standoutConcerns,
+        source: productA.source,
       },
       productB: {
         id: productB.id,
         name: productB.name,
         brand: productB.brand,
-        score: scoreB.score,
-        color: scoreB.color,
-        flaggedIngredients: lensB.flaggedIngredients,
-        ingredientCount: lensB.ingredientCount,
-        standoutBenefits: lensB.standoutBenefits,
-        standoutConcerns: lensB.standoutConcerns,
+        score: productB.score,
+        color: productB.color,
+        flaggedIngredients: productB.flaggedIngredients,
+        ingredientCount: productB.ingredientCount,
+        standoutBenefits: productB.standoutBenefits,
+        standoutConcerns: productB.standoutConcerns,
+        source: productB.source,
       },
       better: comparison.better,
       summary: comparison.summary,
